@@ -21,9 +21,14 @@ jobs:
         run: node scripts/fetch_outbreaks.mjs
       - name: Rebuild model
         run: node scripts/build_model.mjs
+      - name: OG image (PIL)
+        continue-on-error: true
+        run: |
+          python3 -m pip install --quiet pillow
+          python3 scripts/make_og.py
       - name: Commit data
         run: |
           git config user.name "vetflu-bot"
           git config user.email "actions@users.noreply.github.com"
-          git add data/model.json data/weather.json data/climate_cache.json data/outbreaks_live.json
+          git add data/model.json data/weather.json data/climate_cache.json data/outbreaks_live.json data/history.json data/feed.xml og-image.png
           git diff --cached --quiet || (git commit -m "daily update $(date -u +%F)" && git push)

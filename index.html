@@ -4,13 +4,19 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>VetFlu — окна риска заноса гриппа птиц</title>
-<meta name="description" content="Предиктивные окна риска заноса высокопатогенного гриппа птиц (ВПГП) в РФ: миграционная фаза пролёта по 4 флайвеям, 8 групп видов-резервуаров, 52-недельный календарь + погодный слой (Open-Meteo) + живой фон вспышек WOAH WAHIS — ежедневный пересчёт индекса R.">
+<meta name="description" content="Предиктивные окна риска заноса высокопатогенного гриппа птиц (ВПГП) в РФ: три канала риска (транзит, колонии, зимовки) по 4 флайвеям, 8 групп видов-резервуаров, 52-недельный календарь + погодный слой (Open-Meteo) + живой фон вспышек WOAH WAHIS — ежедневный пересчёт индекса R.">
 <meta property="og:title" content="VetFlu — окна риска заноса гриппа птиц">
-<meta property="og:description" content="Индекс риска заноса ВПГП по 4 флайвеям России: миграционная фаза × погодный форсаж × персистентность вируса × фон вспышек. Календарь пролёта + живые данные (Open-Meteo, WOAH WAHIS) — ежедневный пересчёт.">
+<meta property="og:description" content="Индекс риска заноса ВПГП по 4 флайвеям России: R = max(транзит, колонии, зимовки) × погодный форсаж × фон вспышек. Календарь пролёта + узловая детализация 16 городов + живые данные (Open-Meteo, WOAH WAHIS) — ежедневный пересчёт.">
 <meta property="og:type" content="website">
 <meta property="og:url" content="https://shray77.github.io/vetflu-site/">
-<meta name="twitter:card" content="summary">
+<meta property="og:image" content="https://shray77.github.io/vetflu-site/og-image.png">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
+<meta property="og:image:alt" content="VetFlu — окна риска ВПГП: индекс R по 4 флайвеям России">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:image" content="https://shray77.github.io/vetflu-site/og-image.png">
 <link rel="canonical" href="https://shray77.github.io/vetflu-site/">
+<link rel="alternate" type="application/rss+xml" title="VetFlu — окна риска ВПГП" href="./feed.xml">
 <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🦆</text></svg>">
 <link rel="stylesheet" href="./vendor/leaflet.css">
 <style>
@@ -86,6 +92,42 @@
   .fw .factor { font: 700 10.5px var(--mono); padding: 2px 8px; border-radius: 999px; border: 1px solid var(--border); color: var(--faint); background: var(--surface2); }
   .fw .factor.on { color: var(--accent); border-color: rgba(56,189,248,.4); background: var(--accent-dim); }
   .fw .win { margin-top: 10px; padding-top: 8px; border-top: 1px solid var(--border); font: 11.5px var(--mono); color: var(--muted); }
+
+  /* v2.0: канал-бейдж + мини-бары трёх каналов + спарклайн истории */
+  .chan-badge { font: 700 10.5px var(--mono); text-transform: uppercase; letter-spacing: .06em; padding: 3px 9px; border-radius: 999px; border: 1px solid var(--border); }
+  .chbars { display: grid; gap: 4px; margin: 10px 0 4px; }
+  .chbars .cb { display: grid; grid-template-columns: 74px 1fr 30px; gap: 8px; align-items: center; font: 11px var(--mono); color: var(--muted); }
+  .chbars .cbt { height: 7px; border-radius: 4px; background: #263042; overflow: hidden; }
+  .chbars .cbt i { display: block; height: 100%; border-radius: 4px; }
+  .chbars .cbv { text-align: right; color: var(--text); }
+  .spark { margin-top: 10px; padding-top: 8px; border-top: 1px solid var(--border); }
+  .spark .cap { font: 10.5px var(--mono); color: var(--faint); margin-bottom: 4px; }
+  .spark svg { display: block; width: 100%; height: 30px; }
+
+  /* v2.0: прогноз сезона */
+  .fc-row { display: grid; grid-template-columns: 96px repeat(4, 1fr); gap: 8px; align-items: center; padding: 9px 0; border-top: 1px solid var(--border); font: 12px var(--mono); }
+  .fc-row:first-child { border-top: none; }
+  .fc-cell { text-align: center; }
+  .fc-cell b { display: block; font-size: 15px; }
+  .fc-cell .d { color: var(--faint); font-size: 10.5px; }
+  .fc-cell .up { color: var(--red); } .fc-cell .down { color: var(--accent); } .fc-cell .flat { color: var(--faint); }
+  @media (max-width: 640px) { .fc-row { grid-template-columns: 64px repeat(4, 1fr); } }
+
+  /* v2.0: узлы сейчас */
+  .nd-chip { display: inline-block; font: 700 9.5px var(--mono); padding: 1px 7px; border-radius: 999px; border: 1px solid var(--border); margin-left: 4px; }
+  .nd-chip.col { color: var(--green); border-color: rgba(52,211,153,.4); background: rgba(52,211,153,.1); }
+  .nd-chip.win { color: var(--violet); border-color: rgba(167,139,250,.4); background: rgba(167,139,250,.1); }
+
+  /* v2.0: мини-FAQ методологии */
+  .faq { margin: 10px 0; }
+  .faq dt { color: var(--text); font-weight: 600; margin-top: 10px; }
+  .faq dd { margin: 3px 0 0; color: var(--muted); font-size: 13px; padding-left: 16px; }
+  .chan-tbl { width: 100%; border-collapse: collapse; font: 12px var(--mono); margin: 8px 0 4px; }
+  .chan-tbl th { text-align: left; color: var(--faint); padding: 4px 8px; border-bottom: 1px solid var(--border); font-weight: 700; }
+  .chan-tbl td { padding: 5px 8px; border-bottom: 1px solid var(--border); color: var(--muted); }
+  .chan-tbl tr:last-child td { border-bottom: none; }
+  .posthoc { border-left: 3px solid var(--orange); background: var(--orange-dim); border-radius: 6px; padding: 10px 14px; font-size: 13px; color: var(--muted); margin: 10px 0; }
+  .posthoc b { color: var(--orange); }
 
   .strip-card { background: var(--surface); border: 1px solid var(--border); border-radius: 14px; padding: 14px 16px; margin: 18px 0 8px; }
   .strip-card h2, section > h2, .panel h2 { font-size: 17px; margin: 0 0 4px; letter-spacing: -.01em; }
@@ -170,7 +212,7 @@
       <div class="logo">🦆</div>
       <div>
         <h1>VetFlu — окна риска ВПГП</h1>
-        <p>Индекс риска заноса высокопатогенного гриппа птиц: миграционная фаза пролёта × погодный форсаж × фон вспышек по 4 флайвеям России.</p>
+        <p>Три канала риска заноса высокопатогенного гриппа птиц — транзит × колонии × зимовки — с погодным форсажем и фоном вспышек по 4 флайвеям России.</p>
       </div>
     </div>
     <div class="live" id="meta"><span class="dot"></span><span>загрузка…</span></div>
@@ -196,6 +238,20 @@
 
   <section class="flyways" id="flyways"></section>
 
+  <section class="panel" id="forecast-panel">
+    <h2>Прогноз сезона — ведущий канал на 4 недели вперёд</h2>
+    <p class="sub">Для каждого флайвея — значение доминирующего канала недели (argmax транзит/колонии/зимовки) на недели w+1…w+4 от текущей. Стрелки — рост или спад относительно текущей недели; заворот через Новый год учитывается (календарь циклический, 52 недели).</p>
+    <div id="forecast"></div>
+  </section>
+
+  <section class="panel" id="nodes-panel">
+    <h2>Узлы сейчас — 16 узловых точек <span class="phase-badge p1">v2.0 · погода по узлам</span></h2>
+    <p class="sub">Каждый узел — репрезентативная точка флайвея с экспертной долей транзитного потока (share, Σ по флайвею = 1). Погодный множитель считается по метеоточке узла (не усреднение по флайвею): R<sub>узла</sub> = значение ведущего канала флайвея × MW<sub>узла</sub> × MB. Флажки — колониальный канал (гнездовые колонии) и зимовочный (массовые зимовки). Сортировка по убыванию риска.</p>
+    <div style="overflow-x:auto">
+      <table class="spec" id="nodes-table"></table>
+    </div>
+  </section>
+
   <section class="panel" id="ob-panel">
     <h2>Фон заносов — свежие вспышки ВПГП <span class="phase-badge p1">фаза 3 · WAHIS live</span></h2>
     <p class="sub">Источник — WOAH WAHIS, публичный API официальных уведомлений (его же скрейпит <a href="https://shray77.github.io/vet-heatmap/">ВетКарта</a>). Окно 60 дней; вес события по свежести последнего рапорта: ≤14 дней — 1.0, ≤30 — 0.6, ≤60 — 0.3; страны коридора — полный вес, смежные — 0.4; сатурация на 10 условных единицах. Множитель MB = 0.85 + 0.30·B сдвигает итоговый индекс на ±15%. Публикация уведомлений отстаёт от реальных событий — фон не заменяет официальные каналы Россельхознадзора (ФСВПС).</p>
@@ -218,8 +274,8 @@
   </section>
 
   <article class="doc" id="method">
-    <h2>Как это считается <span class="phase-badge p1">фаза 1–3 · миграция + погода + фон</span></h2>
-    <p>Индекс <b>M (0–100)</b> — агрегированная миграционная фаза по флайвею: взвешенный вклад групп видов-резервуаров, у каждой из которых заданы осеннее и весеннее окна пролёта, пик и размах (σ = размах/6). Осенний транзит учитывается полным весом, весенний — ослабленным (0.62), плюс постоянный фоновый уровень резидентных птиц. Пики сдвинуты по флайвеям: на юге осенний транзит проходит позже — птица добирается с севера, весенний — раньше.</p>
+    <h2>Как это считается <span class="phase-badge p1">фаза 1–3 · v2.0 · каналы риска</span></h2>
+    <p>С v2.0 модель считает <b>три канала риска</b> по каждому флайвею и берёт максимум: <b>R = max(M, C, Z) × MW × MB</b>. Канал <b>M — транзит (0–100)</b>: агрегированная миграционная фаза пролёта — взвешенный вклад групп видов-резервуаров, у каждой из которых заданы осеннее и весеннее окна пролёта, пик и размах (σ = размах/6). Осенний транзит учитывается полным весом, весенний — ослабленным (0.62), плюс постоянный фоновый уровень резидентных птиц. Пики сдвинуты по флайвеям: на юге осенний транзит проходит позже — птица добирается с севера, весенний — раньше.</p>
     <p><b>Честно о данных:</b> окна и пики — экспертная параметризация по орнитологическим сводкам (флайвеи BirdLife/Wetlands International, региональные фенокалендари России), а не расчёт по сырым наблюдениям. Следующий шаг уточнения — недельная абундантность eBird Status &amp; Trends и GPS-треки Movebank: структура модели это позволяет без её пересборки.</p>
     <div class="thresholds">
       <div class="thr"><b style="color:#5d6a7d">&lt; 15 — фон</b>межсезонный минимум, локальные резидентные птицы</div>
@@ -227,26 +283,58 @@
       <div class="thr"><b style="color:#fbbf24">45–74 — активный пролёт</b>массовый транзит, остановки на водоёмах</div>
       <div class="thr"><b style="color:#f87171">≥ 75 — окно высокого риска</b>пик: молодняк, плотные скопления, контакт с домашней птицей вероятен</div>
     </div>
-    <p><b>Погодный слой (фаза 2):</b> итоговый индекс <b>R = M × MW × MB</b>, где MW = 0.70 + 0.45·W + 0.25·P — погода может усилить миграционный риск до +40% или ослабить до −30%. <b>W — форсаж движений</b> = 0.6·A + 0.4·F: A — аномалия холода (средняя за 7 дней против нормы той же даты 2015–2024; −8°C и холоднее — максимум), F — доля суток с минусом за 14 дней (прошедшие + прогнозные; прокси ледостава и концентрации птицы на полыньях). <b>P — персистентность</b> = clamp(1 − (T+5)/40): H5N1 в холодной воде живёт недели, в тёплой — дни. Погода — Open-Meteo (архив + прогноз), 4 точки на флайвей, пересчёт — GitHub Actions ежедневно; W и P — прозрачные эвристики, а не калиброванная эпидемиология.</p>
+    <p><b>Каналы колонии и зимовки (v2.0):</b> транзитный календарь не видит два реальных механизма заноса. <b>C — колониальный канал</b>: гнездовые скопления чайковых, бакланов, пеликанов и лысух в июне–августе — форма задаётся гауссианой с пиком на неделе 28: C(w) = 100·c·gauss(w, 28, σ). <b>Z — зимовочный канал</b>: миллионы водоплавающих концентрируются на зимовках с ноября по март — трапеция с заворотом через Новый год (подъём start→full1, плато 1, спад full2→end на дугах окружности недель 1–52): Z(w) = 100·z·trap(w). Параметры — экспертные:</p>
+    <table class="chan-tbl">
+      <tr><th>флайвей</th><th>C: c · σ (пик н28)</th><th>Z: z</th><th>окно зимовки (start→full1→full2→end)</th><th>ориентиры</th></tr>
+      <tr><td>Черном.</td><td>0.82 · 4.5</td><td>0.88</td><td>н44 → н50 → н5 → н10</td><td>Каспий/дельта Волги: бакланы, пеликаны, чайковые, лысухи; зимовки Каспий–Азов–Черноморье (ноябрь 2022 — Дагестан)</td></tr>
+      <tr><td>В-Атл</td><td>0.62 · 5.0</td><td>0.50</td><td>н45 → н51 → н4 → н9</td><td>морские колонии Баренцева/Белого моря, Ладога; зимовки Балтики, полыньи Северо-Запада</td></tr>
+      <tr><td>В-Азия</td><td>0.55 · 5.0</td><td>0.38</td><td>н46 → н51 → н3 → н9</td><td>Ханка, Селенга, Охотское море; зимовки юга Дальнего Востока</td></tr>
+      <tr><td>Центр-Аз</td><td>0.42 · 5.0</td><td>0.25</td><td>н46 → н50 → н3 → н8</td><td>озёрные колонии юга ЗапСибири; зимовки юга Западной Сибири</td></tr>
+    </table>
+    <div class="posthoc"><b>Честная оговорка о пост-хоке:</b> колониальный канал добавлен в v2.0 после разбора промаха v1 по летней каспийской волне 2021. Его попадание в бэктесте по этой волне — <b>не независимое подтверждение</b> модели, а встроенное объяснение уже известного события. Независимую проверку канал пройдёт только на будущих колониальных волнах.</div>
+    <p><b>Погодный слой (фаза 2):</b> итоговый индекс <b>R = max(M, C, Z) × MW × MB</b> — максимальный из трёх каналов умножается на погоду и фон. MW = 0.70 + 0.45·W + 0.25·P — погода может усилить риск до +40% или ослабить до −30%. <b>W — форсаж движений</b> = 0.6·A + 0.4·F: A — аномалия холода (средняя за 7 дней против нормы той же даты 2015–2024; −8°C и холоднее — максимум), F — доля суток с минусом за 14 дней (прошедшие + прогнозные; прокси ледостава и концентрации птицы на полыньях). <b>P — персистентность</b> = clamp(1 − (T+5)/40): H5N1 в холодной воде живёт недели, в тёплой — дни:</p>
+    <svg viewBox="0 0 220 92" style="max-width:340px;width:100%;height:auto;display:block;margin:6px 0 10px" role="img" aria-label="Кривая персистентности P(T)">
+      <line x1="10" y1="77" x2="210" y2="77" stroke="#2c3543" stroke-width="1"/>
+      <line x1="10" y1="7" x2="10" y2="77" stroke="#2c3543" stroke-width="1"/>
+      <path d="M 10,7 L 160,59.5 L 210,59.5" fill="none" stroke="#38bdf8" stroke-width="2"/>
+      <text x="14" y="16" fill="#93a0b4" font-size="9" font-family="monospace">P = 1.0 (−5°C — недели в воде)</text>
+      <text x="90" y="52" fill="#93a0b4" font-size="9" font-family="monospace">P = 0.25 (минимум)</text>
+      <text x="10" y="88" fill="#5d6a7d" font-size="9" font-family="monospace">−5°C</text>
+      <text x="150" y="88" fill="#5d6a7d" font-size="9" font-family="monospace">+25°C</text>
+      <text x="196" y="88" fill="#5d6a7d" font-size="9" font-family="monospace">+35°C</text>
+    </svg>
+    <p>Погода — Open-Meteo (архив + прогноз), 4 точки на флайвей, пересчёт — GitHub Actions ежедневно; W и P — прозрачные эвристики, а не калиброванная эпидемиология. Детальный погодный мониторинг тех же точек — в <a href="https://shray77.github.io/vet-meteo/">vet-meteo</a>.</p>
     <p><b>Фон заносов (фаза 3):</b> <b>B</b> — свежие события ВПГП вверх по флайвею из WOAH WAHIS (публичный API официальных уведомлений — тот же источник, что скрейпит <a href="https://shray77.github.io/vet-heatmap/">ВетКарта</a>). Каждое событие весит по свежести последнего рапорта (≤14 дней — 1.0, ≤30 — 0.6, ≤60 — 0.3); страны коридора — полный вес, смежные — 0.4; сумма нормируется сатурацией на 10 условных единицах. Множитель <b>MB = 0.85 + 0.30·B</b> — до +15% при активной эпизоотии в коридоре и до −15% при тихом фоне. Если WAHIS недоступен, B нейтрален (1.00) — индекс остаётся миграционно-погодным.</p>
-    <p>Активны все четыре фактора: <b>M</b> (миграция), <b>W</b> (погодный форсаж), <b>P</b> (персистентность) и <b>B</b> (фон заносов). Дальше — уточнение календаря недельной абундантностью eBird Status &amp; Trends и GPS-треками Movebank и калибровка коэффициентов по ретроспективе; структура модели не меняется.</p>
+    <p>С v2.0 активны все компоненты: <b>три канала</b> (транзит M, колонии C, зимовки Z), <b>W</b> (погодный форсаж), <b>P</b> (персистентность) и <b>B</b> (фон заносов); живые множители применяются к текущей неделе, узловая детализация — 16 точек со своим MW. Дальше — уточнение календаря недельной абундантностью eBird Status &amp; Trends и GPS-треками Movebank и калибровка коэффициентов по ретроспективе; структура модели не меняется.</p>
+    <h2 style="margin-top:18px">Мини-FAQ</h2>
+    <dl class="faq">
+      <dt>Чем это отличается от ВетКарты (vet-heatmap)?</dt>
+      <dd><a href="https://shray77.github.io/vet-heatmap/">ВетКарта</a> — детальная ретроспектива и текущие вспышки по РФ (тот же источник WAHIS): что уже случилось. VetFlu — проактивный индекс: в какие недели и на каких миграционных путях окно заноса открывается или закрывается. Инструменты дополняют друг друга.</dd>
+      <dt>Откуда данные?</dt>
+      <dd>Календарь каналов — экспертная параметризация по орнитологическим сводкам; погода — Open-Meteo (архив 2015–2024 + прогноз, без ключей; детальный погодный мониторинг — <a href="https://shray77.github.io/vet-meteo/">vet-meteo</a>); вспышки — публичный API WOAH WAHIS. Всё пересобирается ежедневно в GitHub Actions.</dd>
+      <dt>Почему возможны промахи?</dt>
+      <dd>Модель — эвристика, а не эпидемиологический расчёт: календарь усреднённый, WAHIS отстаёт от реальных событий, редкие механизмы (например, ближний перенос с птицефабрик) не покрыты. Промахи фиксируются честно — см. бэктест ниже.</dd>
+      <dt>Можно ли использовать для принятия решений?</dt>
+      <dd>Нет. Это ознакомительный индекс «как есть», не ветеринарный совет и не система раннего предупреждения в нормативном смысле. Решения — только по официальным каналам Россельхознадзора (ФСВПС) и государственной ветслужбе.</dd>
+    </dl>
   </article>
 
   <article class="doc" id="roadmap">
-    <h2>Дорожная карта <span class="phase-badge p1">фаза 1–3 · миграция, погода и фон готовы</span></h2>
+    <h2>Дорожная карта <span class="phase-badge p1">v2.0 · каналы риска готовы</span></h2>
     <ul>
       <li><b>Фаза 1 (готова):</b> календарь пролёта, индекс M, витрина с картой и скраббером недель. Пересчёт — статический, параметризация уточняется по справочникам.</li>
       <li><b>Фаза 2 (готова):</b> множители W и P подключены — аномалии холода против норм 2015–2024, ледостав (доля суток с минусом за 14 дней), персистентность по средней температуре. Источник — Open-Meteo, та же безключевая API, что под капотом <a href="https://shray77.github.io/vet-meteo/">vet-meteo</a>, но точки по всем флайвеям РФ (вет-метео детализирован на Ростовскую область). Пересчёт — GitHub Actions ежедневно. Холодный октябрь сгоняет птицу югом раньше и дольше держит вирус в водоёмах.</li>
       <li><b>Фаза 3 (готова):</b> множитель B подключён — свежие события ВПГП по коридорам флайвеев из WOAH WAHIS, обновление ежедневно вместе с погодой; ретроспектива по волнам 2020–2023 встроена в «Проверку глазами». Индекс с полным разложением публикуется в <a href="./data/model.json">model.json</a> для других сервисов экосистемы.</li>
-      <li><b>Дальше:</b> уточнение календаря недельной абундантностью eBird Status &amp; Trends и GPS-треками Movebank (структура модели не меняется), калибровка коэффициентов по ретроспективе, RSS-лента окон риска.</li>
+      <li><b>v2.0 «каналы риска» (готово):</b> транзит дополнен колониальным (гнездовые скопления, пик н28) и зимовочным (трапеция ноябрь–март с заворотом через год) каналами — R = max(M, C, Z) × MW × MB; узловая детализация — свой погодный множитель на каждом из 16 узлов; история R с спарклайнами и RSS-лентой смен фазы; OG-картинка; API-секция.</li>
+      <li><b>Дальше:</b> уточнение календаря недельной абундантностью eBird Status &amp; Trends и GPS-треками Movebank (структура модели не меняется), калибровка коэффициентов по ретроспективе, независимая проверка колониального канала на будущих волнах.</li>
     </ul>
   </article>
 
   <article class="doc" id="validation">
-    <h2>Проверка глазами: волны 2020–2023</h2>
-    <p>Ретроспективный прогон календаря по неделям известных волн (только M — погоду и фон задним числом не восстановить):</p>
+    <h2>Проверка глазами: волны 2020–2023 <span class="phase-badge p1">бэктест v2 · три канала</span></h2>
+    <p>Ретроспективный прогон всех трёх каналов по неделям известных волн (только статика каналов — погоду и фон задним числом не восстановить). hit = max(M, C, Z) ≥ 45, канал — argmax:</p>
     <div style="overflow-x:auto"><table class="spec" id="bt-table"></table></div>
-    <p>Календарь попадает в осенние окна всех четырёх осенних волн. Летняя каспийская волна 2021 — честный промах: она держалась на гнездовых колониях чаек и лысух, а не на транзите, и миграционным индексом не видна — колониальный фактор зафиксирован как ограничение и кандидат в следующие версии.</p>
+    <p id="bt-footnote" style="font-size:12.5px">Календарь транзита попадает в осенние окна всех четырёх осенних волн. Летняя каспийская волна 2021 в v1 была честным промахом (M=4): она держалась на гнездовых колониях чаек и лысух, а не на транзите. В v2.0 её ловит колониальный канал (C≈80 на неделе 27) — но это <b>пост-хок</b>: канал добавлен после разбора именно этого промаха, попадание не считать независимым подтверждением.</p>
     <ul>
       <li><b>Осень 2020:</b> заносы на юг ЕТР (Крым, Ростовская, Волгоградская, Астраханская) — конец осеннего транзита, недели 44–49 по нашему календарю на Черноморско-Средиземноморском флайвее.</li>
       <li><b>Лето–осень 2021:</b> клад 2.3.4.4b закрепился через морские колонии и северо-запад, осенью пошёл каскад по всей европейской части — октябрь–декабрь, ровно окна позднеосеннего пролёта уток и лебедей.</li>
@@ -254,11 +342,31 @@
       <li><b>С 2021 по настоящее время:</b> чайковые (Laridae) — ключевой вектор волны, поэтому их вес в модели поднят, а окно дисперсии (август–ноябрь) начинается раньше утиных.</li>
     </ul>
   </article>
+
+  <article class="doc" id="api">
+    <h2>API — забирайте данные <span class="phase-badge p1">JSON + RSS · CORS: *</span></h2>
+    <p>Весь результат расчёта публикуется статикой и отдаётся GitHub Pages с заголовком <b>Access-Control-Allow-Origin: *</b> — можно фетчить из любого браузера/скрипта без ключей и бэкенда.</p>
+    <ul>
+      <li><b><a href="./data/model.json">data/model.json</a></b> — главный документ: <code>version</code>, <code>generated_at</code>, <code>series</code> (по флайвеям: 52 недели × {w, m, c, z, chan, ph, seas, top}, на текущей неделе + r/mw/mb/sat), <code>nodes</code> (16 узлов: share, anomaly_c, frost14, w, p, mw, colony, wintering, r), <code>history</code> (последние 90 дней R с разложением m/c/z/chan), <code>backtest</code> (волны 2020–2023 × каналы), <code>weather</code> (Open-Meteo по флайвеям и точкам), <code>outbreaks</code> (WAHIS: b/mb, события), <code>channels</code> (параметры каналов).</li>
+      <li><b><a href="./feed.xml">feed.xml</a></b> — RSS 2.0 «VetFlu — окна риска ВПГП»: смены фазы риска (ph_r) любого флайвея между соседними днями + стартовое состояние, последние 20 событий.</li>
+      <li><b><a href="./data/outbreaks_live.json">data/outbreaks_live.json</a></b> — сырой срез WAHIS за 60 дней; <b><a href="./data/weather.json">data/weather.json</a></b> — срез Open-Meteo.</li>
+    </ul>
+    <p style="font:12.5px var(--mono);background:var(--surface2);border:1px solid var(--border);border-radius:10px;padding:12px 14px;overflow-x:auto;white-space:pre;color:var(--muted)"># текущая неделя и разложение R по Восточно-Атлантическому флайвею
+curl -s https://shray77.github.io/vetflu-site/data/model.json | jq '.series.ea.weeks[] | select(.r != null)'
+
+# узлы сейчас (16 городов с R узла)
+curl -s https://shray77.github.io/vetflu-site/data/model.json | jq '.nodes'
+
+# история R и RSS-лента
+curl -s https://shray77.github.io/vetflu-site/data/model.json | jq '.history[-3:]'
+curl -s https://shray77.github.io/vetflu-site/feed.xml | head</p>
+  </article>
 </main>
 
 <footer>
   <div class="wrap foot">
     <span class="legal">информационный сервис · не ветеринарный совет · прогноз ознакомительный · <a href="./terms.html">условия и дисклеймер</a></span>
+    <span>v2.0 «каналы риска» · транзит / колонии / зимовки · <a href="./feed.xml">RSS-лента</a> · <a href="./og-image.png">OG</a></span>
     <span>данные: <a href="./data/model.json">model.json</a> · <a href="./data/outbreaks_live.json">outbreaks_live.json</a> · календарь — экспертная параметризация · погода — Open-Meteo · вспышки — WOAH WAHIS (ежедневно)</span>
     <a href="https://shray77.github.io/vet-meteo/">метео-данные →</a>
     <a href="https://github.com/shray77/vetflu-site">репозиторий</a>
@@ -272,6 +380,15 @@ let map = null, lines = {}, hubLayer = null;
 
 const esc = (s) => String(s).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
 const MONTHS = ["янв","фев","мар","апр","мая","июн","июл","авг","сен","окт","ноя","дек"];
+// v2.0: каналы риска
+const CHAN_COLOR = { transit: "#38bdf8", colonies: "#34d399", wintering: "#a78bfa" };
+const CHAN_TIP = {
+  transit: "Транзит — миграционный календарь пролёта 8 групп видов-резервуаров",
+  colonies: "Колонии — гнездовые скопления чайковых/бакланов/лысух, гауссиана пика н28 (июнь–август)",
+  wintering: "Зимовки — массовые зимовки водоплавающих, трапеция ноябрь–март с заворотом через год",
+};
+function chanName(id) { return (M.channels && M.channels[id] && M.channels[id].label) || ({ transit: "Транзит", colonies: "Колонии", wintering: "Зимовки" })[id] || id; }
+function chanMax(s) { return Math.max(s.m, s.c, s.z); }
 
 function isoWeek(d) {
   const t = new Date(Date.UTC(d.getFullYear(), d.getMonth(), d.getDate()));
@@ -304,6 +421,17 @@ function wj(fwId) { return M.weather && M.weather.per_flyway[fwId]; }
 function obj(fwId) { return M.outbreaks && M.outbreaks.available && M.outbreaks.per_flyway[fwId] ? M.outbreaks.per_flyway[fwId] : null; }
 function isNow() { return week === CURW; }
 function disp(fwId, s) { return (isNow() && s.r != null) ? s.r : s.m; }
+// v2.0: спарклайн истории R (inline SVG из model.history; скрыт если записей < 5)
+function sparkHtml(fwId, color) {
+  const recs = (M.history || []).filter(h => h.per_flyway && h.per_flyway[fwId] && h.per_flyway[fwId].r != null);
+  if (!recs || recs.length < 5) return "";
+  const pts = recs.map((h, i) => `${(i / (recs.length - 1)) * 100},${28 - (h.per_flyway[fwId].r / 100) * 26 - 1}`).join(" ");
+  return `<div class="spark"><div class="cap">история R · ${recs.length} дн · ${esc(recs[0].date)} — ${esc(recs[recs.length - 1].date)}</div>
+    <svg viewBox="0 0 100 28" preserveAspectRatio="none" role="img" aria-label="История R флайвея">
+      <polyline points="${pts}" fill="none" stroke="${color}" stroke-width="1.6" vector-effect="non-scaling-stroke"/>
+      <line x1="0" y1="1.5" x2="100" y2="1.5" stroke="#2c3543" stroke-width=".5"/>
+    </svg></div>`;
+}
 function bColor(b) { if (b >= 0.66) return "#f87171"; if (b >= 0.33) return "#fbbf24"; if (b > 0) return "#38bdf8"; return "#3b4a61"; }
 function shifted(sp, kind, fwId) {
   const fw = M.flyways.find(f => f.id === fwId);
@@ -324,6 +452,7 @@ function initMap() {
 function drawMap() {
   initMap();
   if (!map) { document.getElementById("map-note").textContent = "карта недоступна (leaflet не загрузился)"; return; }
+  hubLayer.clearLayers();
   for (const fw of M.flyways) {
     const s = M.series[fw.id].weeks[week - 1];
     const v = disp(fw.id, s);
@@ -334,11 +463,11 @@ function drawMap() {
     const ob = obj(fw.id);
     let head;
     if (v !== s.m) {
-      const bits = [`M ${s.m}`];
+      const bits = [`max(M${s.m}, C${s.c}, Z${s.z})`];
       if (wj(fw.id)) bits.push(`погода ${wj(fw.id).mw}`);
       if (ob) bits.push(`фон ${ob.mb.toFixed(2)}`);
-      head = `R = ${v} <span style="color:#93a0b4">(${bits.join(" × ")})</span>`;
-    } else head = `M = ${s.m}`;
+      head = `R = ${v} <span style="color:#93a0b4">(${bits.join(" × ")} · канал: ${esc(chanName(s.chan))})</span>`;
+    } else head = `ведущий канал: ${esc(chanName(s.chan))} = ${chanMax(s)} <span style="color:#93a0b4">(M${s.m} · C${s.c} · Z${s.z})</span>`;
     lines[fw.id] = paths.map(p => L.polyline(p, {
       color: fw.color, weight, opacity, lineCap: "round",
     }).bindPopup(
@@ -347,8 +476,25 @@ function drawMap() {
     fw.hubs.forEach(h => L.circleMarker(h.ll, { radius: 3.5, color: "#e8ecf3", weight: 1, fillColor: fw.color, fillOpacity: .9 })
       .bindPopup(`<b>${esc(h.name)}</b><br><span style="color:#93a0b4">узел концентраций · ${esc(fw.label)}</span>`).addTo(hubLayer));
   }
+  // v2.0: 16 узловых точек — размер/цвет ∝ R узла, попап с разложением
+  const now = isNow();
+  for (const [fwid, ns] of Object.entries(M.nodes || {})) {
+    const fw = M.flyways.find(f => f.id === fwid);
+    const wkRow = M.series[fwid].weeks[week - 1];
+    for (const n of ns) {
+      const live = now && n.r != null;
+      const val = live ? n.r : chanMax(wkRow);
+      const badge = (n.colony ? " 🪺" : "") + (n.wintering ? " ❄️" : "");
+      const body = live
+        ? `R узла = <b style="color:${mColor(n.r)}">${n.r}</b><br><span style="color:#93a0b4">${esc(chanName(n.chan))} ${n.chan_value} × MW<sub>узла</sub> ${n.mw} × MB ${n.mb}${n.anomaly_c != null ? ` · аномалия ${n.anomaly_c > 0 ? "+" : ""}${n.anomaly_c}°C` : ""}</span>`
+        : `<span style="color:#93a0b4">${esc(chanName(wkRow.chan))} ${chanMax(wkRow)} — статика канала (R узла — только на «сегодня»)</span>`;
+      L.circleMarker([n.lat, n.lon], { radius: 4 + 7 * (val / 100), color: "#e8ecf3", weight: 1.2, fillColor: mColor(val), fillOpacity: .85 })
+        .bindPopup(`<b>${esc(n.name)}${badge}</b><br><span style="color:#93a0b4">${esc(fw ? fw.label : fwid)} · узел · share ${Math.round(n.share * 100)}%</span><br>${body}`)
+        .addTo(hubLayer);
+    }
+  }
   document.getElementById("map-note").textContent =
-    `неделя ${week}: толщина коридора = индекс пролёта M · точки — узлы концентраций водоплавающих`;
+    `неделя ${week}: толщина коридора = ведущий канал · крупные точки — узлы (размер/цвет ∝ R узла), мелкие — концентрации водоплавающих`;
 }
 
 function drawStats() {
@@ -361,7 +507,7 @@ function drawStats() {
   const f = (d) => d.getUTCDate() + " " + MONTHS[d.getUTCMonth()];
   document.getElementById("stats").innerHTML =
     `<div class="stat"><b style="color:var(--accent)">${week}</b><span>неделя года · ${f(a)} — ${f(b)}</span></div>` +
-    `<div class="stat"><b style="color:${mColor(top.v)}">${top.v}</b><span>${isNow() && (M.weather || M.outbreaks) ? "макс R сейчас (M×MW×MB) — " : "макс M сейчас — "}${esc(top.f.label)}</span></div>` +
+    `<div class="stat"><b style="color:${mColor(top.v)}">${top.v}</b><span>${isNow() && (M.weather || M.outbreaks) ? "макс R сейчас (max каналов × MW × MB) — " : "макс M сейчас — "}${esc(top.f.label)}</span></div>` +
     `<div class="stat"><b style="color:${hot ? "var(--red)" : "var(--text)"}">${hot}</b><span>флайвеев в окне высокого риска (≥75)</span></div>` +
     `<div class="stat"><b style="font-size:15px;padding-top:6px">${esc(peaks)}</b><span>пики осеннего пролёта (неделя)</span></div>`;
 }
@@ -385,20 +531,28 @@ function drawFlyways() {
         (ob ? `<span class="factor on" title="фон заносов WAHIS (60 дн): ${ob.ev30} событий за 30 дн · B=${ob.b} (сатурация 10)">B ✓ · ${ob.ev30} всп./30д</span>`
             : `<span class="factor" title="нет свежих данных WAHIS — B нейтрален">B</span>`)
       : `<span class="factor on">M ✓</span><span class="factor">W</span><span class="factor">P</span><span class="factor">B</span>`;
-    const decomp = [`M ${s.m}`];
+    const decomp = [`max(M${s.m}, C${s.c}, Z${s.z})`];
     if (w) decomp.push(`MW ${w.mw}`);
     if (ob) decomp.push(`MB ${ob.mb.toFixed(2)}`);
     const sub = now && s.r != null
-      ? `сейчас: ${decomp.join(" × ")} = R ${s.r}${s.ph_r !== s.ph ? " · " + s.ph_r : ""}`
-      : (M.weather || M.outbreaks ? "живые множители — к текущей неделе (кнопка «сегодня»)" : "нет свежих live-данных — миграционная база M");
+      ? `сейчас: ${decomp.join(" × ")} = R ${s.r}${s.sat ? " ⚠ сатурация" : ""}${s.ph_r !== s.ph ? " · " + s.ph_r : ""}`
+      : (M.weather || M.outbreaks ? "живые множители — к текущей неделе (кнопка «сегодня»)" : "нет свежих live-данных — статические каналы");
+    const cc = CHAN_COLOR[s.chan] || "#93a0b4";
+    const bars = ["transit", "colonies", "wintering"].map(id => {
+      const val = { transit: s.m, colonies: s.c, wintering: s.z }[id];
+      return `<div class="cb" title="${CHAN_TIP[id]}"><span>${chanName(id)}</span><span class="cbt"><i style="width:${val}%;background:${CHAN_COLOR[id]}"></i></span><span class="cbv">${val}</span></div>`;
+    }).join("");
     return `<div class="fw" style="border-top-color:${fw.color}">
       <h3>${esc(fw.label)}</h3>
       <div class="reg">${esc(fw.regions)}</div>
       <div class="mrow"><span class="m" style="color:${mColor(v)}">${v}</span>
-        <span class="ph" style="color:${mColor(v)};border-color:${mColor(v)}">${esc(phase)}</span></div>
+        <span class="ph" style="color:${mColor(v)};border-color:${mColor(v)}">${esc(phase)}</span>
+        <span class="chan-badge" style="color:${cc};border-color:${cc}" title="Доминирующий канал недели (argmax M,C,Z): ${CHAN_TIP[s.chan] || ""}">${esc(chanName(s.chan))}</span></div>
       <div class="seas">${esc(s.seas)} · ведут: ${esc(topTxt)}</div>
+      <div class="chbars">${bars}</div>
       <div class="factors">${factors}</div>
       <div class="win">${esc(sub)}<br>${esc(winTxt)} · пик осени: н${M.series[fw.id].peak_autumn_week}</div>
+      ${sparkHtml(fw.id, fw.color)}
     </div>`;
   }).join("");
 }
@@ -407,7 +561,7 @@ function drawStrip() {
   document.getElementById("strip").innerHTML = M.flyways.map(fw =>
     `<div class="row"><span class="nm" style="color:${fw.color}">${esc(fw.short)}</span>
      <span class="cells">${M.series[fw.id].weeks.map(x =>
-      `<i class="cell${x.w === week ? " cur" : ""}" data-w="${x.w}" title="н${x.w}: M=${x.m} ${esc(x.ph)}" style="background:${mColor(x.m)}"></i>`).join("")}</span></div>`
+      `<i class="cell${x.w === week ? " cur" : ""}" data-w="${x.w}" title="н${x.w}: M=${x.m} · C=${x.c} · Z=${x.z} → ${esc(chanName(x.chan))} ${chanMax(x)} · ${esc(x.ph)}" style="background:${mColor(x.m)}"></i>`).join("")}</span></div>`
   ).join("") +
   `<div class="wkbar"><span></span><span class="wkcells">${
     [1, 6, 11, 16, 21, 26, 31, 36, 41, 46, 51].map(w => `<span>${w}</span>`).join("")}</span></div>`;
@@ -425,11 +579,16 @@ function drawSpecTable() {
       const spr = shifted(sp, "spring", fwSel), aut = shifted(sp, "autumn", fwSel);
       const wf = sp.fw[fwSel] ?? 0;
       const wcol = fw.color;
+      // P2: тултип с точными окнами (start–peak–end) по всем флайвеям из migration.json
+      const allWin = M.flyways.map(f2 => {
+        const s2 = shifted(sp, "spring", f2.id), a2 = shifted(sp, "autumn", f2.id);
+        return `${f2.short}: весна н${s2.s}–н${s2.e} (пик н${s2.p}) · осень н${a2.s}–н${a2.e} (пик н${a2.p})`;
+      }).join("\n");
       return `<tr>
         <td class="nm"><b>${esc(sp.label)}</b><br><span class="lat">${esc(sp.latin)}</span></td>
         <td><span class="wbar" style="width:${Math.round(38 * sp.weight * wf)}px;background:${wcol}"></span><span style="color:var(--faint);font:11px var(--mono)">${(sp.weight * wf).toFixed(2)}</span></td>
-        <td class="win">н${spr.s}–${spr.e} · пик <span class="pk">н${spr.p}</span></td>
-        <td class="win">н${aut.s}–${aut.e} · пик <span class="pk">н${aut.p}</span></td>
+        <td class="win" title="Окна по всем флайвеям:\n${esc(allWin)}">н${spr.s}–${spr.e} · пик <span class="pk">н${spr.p}</span></td>
+        <td class="win" title="Окна по всем флайвеям:\n${esc(allWin)}">н${aut.s}–${aut.e} · пик <span class="pk">н${aut.p}</span></td>
         <td class="note">${esc(sp.note)}</td>
       </tr>`;
     }).join("");
@@ -438,7 +597,12 @@ function drawSpecTable() {
 function setWeek(w) {
   week = Math.min(52, Math.max(1, w));
   document.getElementById("week").value = week;
-  document.getElementById("wk-label").textContent = wkLabel(week);
+  // v2.0: скраббер показывает ведущий канал недели по всем флайвеям, а не только M
+  const chanTxt = M ? M.flyways.map(f => {
+    const s = M.series[f.id].weeks[week - 1];
+    return `${f.short} ${chanName(s.chan).toLowerCase()} ${chanMax(s)}`;
+  }).join(" · ") : "";
+  document.getElementById("wk-label").textContent = wkLabel(week) + (chanTxt ? ` · ${chanTxt}` : "");
   drawStats(); drawFlyways(); drawStrip(); drawMap();
 }
 
@@ -446,7 +610,7 @@ function renderMeta() {
   const wt = M.weather ? ` · погода ${esc(M.weather.updated.slice(0, 10))}` : " · погода: ожидается";
   const obt = M.outbreaks && M.outbreaks.available ? ` · фон ${esc(M.outbreaks.updated.slice(0, 10))}` : " · фон: —";
   document.getElementById("meta").innerHTML =
-    `<span class="dot ok"></span><span>${esc(M.model.version)} · сборка ${esc(M.generated_at.slice(0, 10))}${wt}${obt}</span>`;
+    `<span class="dot ok"></span><span>${esc(M.version)} · сборка ${esc(M.generated_at.slice(0, 10))}${wt}${obt}</span>`;
   document.getElementById("legend").innerHTML = M.flyways.map(fw =>
     `<span><i style="background:${fw.color}"></i>${esc(fw.short)}</span>`).join("");
 }
@@ -474,23 +638,71 @@ function drawOutbreaks() {
   `<p class="sub" style="margin:12px 0 0">Всего HPAI-событий за окно: ${ob.hpai_events_60d} в ${ob.countries_60d.length} странах · обновлено ${esc(ob.updated.slice(0, 10))} · <a href="https://wahis.woah.org/" target="_blank" rel="noopener">WAHIS ↗</a></p>`;
 }
 
+// v2.0: узлы сейчас — таблица 16 узлов, сортировка по R desc
+function drawNodes() {
+  const el = document.getElementById("nodes-table");
+  const rows = Object.entries(M.nodes || {}).flatMap(([fwid, ns]) => ns.map(n => ({ ...n, fwid })));
+  if (!rows.length) {
+    el.innerHTML = `<tr><td class="note">Узловая детализация появится в model.json после сборки v2.0 (см. data/points.json).</td></tr>`;
+    return;
+  }
+  rows.sort((a, b) => (b.r ?? -1) - (a.r ?? -1));
+  el.innerHTML =
+    `<tr><th>узел</th><th>флайвей</th><th>R узла</th><th>share</th><th>MW</th><th>аномалия</th><th>разложение</th></tr>` +
+    rows.map(n => {
+      const fw = M.flyways.find(f => f.id === n.fwid);
+      const chips = (n.colony ? `<span class="nd-chip col" title="узел колониального канала — рядом гнездовые колонии">колонии</span>` : "") +
+        (n.wintering ? `<span class="nd-chip win" title="узел зимовочного канала — рядом массовые зимовки">зимовки</span>` : "");
+      const rCell = n.r != null ? `<b style="color:${mColor(n.r)}">${n.r}</b>` : `<span style="color:var(--faint)" title="нет свежих погодных данных — R узла не считается">—</span>`;
+      return `<tr>
+        <td class="nm"><b>${esc(n.name)}</b>${chips}</td>
+        <td style="color:${fw ? fw.color : "inherit"};font:12px var(--mono)">${esc(fw ? fw.short : n.fwid)}</td>
+        <td class="win">${rCell}</td>
+        <td class="win">${Math.round(n.share * 100)}%</td>
+        <td class="win">${n.mw ?? "—"}</td>
+        <td class="win">${n.anomaly_c != null ? (n.anomaly_c > 0 ? "+" : "") + n.anomaly_c + "°C" : "—"}</td>
+        <td class="win"><span style="color:${CHAN_COLOR[n.chan] || "inherit"}">${esc(chanName(n.chan))} ${n.chan_value}</span>${n.mw != null ? ` × MW ${n.mw} × MB ${n.mb}` : ""}</td>
+      </tr>`;
+    }).join("");
+}
+
+// v2.0: прогноз сезона — ведущий канал на недели w+1..w+4 от текущей (заворот через год учтён)
+function drawForecast() {
+  const el = document.getElementById("forecast");
+  const base = CURW;
+  const cur0 = {};
+  for (const f of M.flyways) cur0[f.id] = chanMax(M.series[f.id].weeks[base - 1]);
+  el.innerHTML = M.flyways.map(fw => {
+    const cells = [1, 2, 3, 4].map(i => {
+      const w = ((base - 1 + i) % 52) + 1;
+      const s = M.series[fw.id].weeks[w - 1];
+      const v = chanMax(s);
+      const d = v - cur0[fw.id];
+      const arrow = d > 0 ? `<span class="up">▲ ${d}</span>` : d < 0 ? `<span class="down">▼ ${-d}</span>` : `<span class="flat">=</span>`;
+      return `<div class="fc-cell"><b style="color:${mColor(v)}">${v}</b><span class="d">н${w} · ${esc(chanName(s.chan).toLowerCase())} ${arrow}</span></div>`;
+    }).join("");
+    return `<div class="fc-row"><span style="color:${fw.color};font-weight:700">${esc(fw.short)}</span>${cells}</div>`;
+  }).join("");
+}
+
 function drawBacktest() {
   const rows = (M.backtest || []).map(x => {
     const fl = M.flyways.find(f => f.id === x.fw);
     return `<tr><td class="nm"><b>${esc(x.label)}</b><br><span class="lat">${esc(x.note)}</span></td>
       <td style="color:${fl ? fl.color : "inherit"};font:12px var(--mono)">${esc(fl ? fl.short : x.fw)}</td>
       <td class="win">н${x.week} · ${esc(x.season)}</td>
-      <td class="win"><b style="color:${mColor(x.m)}">M ${x.m}</b> · ${esc(x.phase)}${x.hit ? " ✓" : " · <span style='color:var(--orange)'>промах</span>"}</td></tr>`;
+      <td class="win">M ${x.m} · C ${x.c} · Z ${x.z}</td>
+      <td class="win"><span style="color:${CHAN_COLOR[x.chan] || "inherit"}">${esc(chanName(x.chan))}</span> <b style="color:${mColor(x.value)}">${x.value}</b>${x.hit ? " ✓" : " · <span style='color:var(--orange)'>промах</span>"}</td></tr>`;
   }).join("");
   document.getElementById("bt-table").innerHTML =
-    `<tr><th>волна</th><th>флайвей</th><th>неделя</th><th>индекс M (ретро)</th></tr>` + rows;
+    `<tr><th>волна</th><th>флайвей</th><th>неделя</th><th>каналы (ретро)</th><th>ведущий канал</th></tr>` + rows;
 }
 
 async function boot() {
   try {
     M = await (await fetch("./data/model.json", { cache: "no-store" })).json();
     CURW = isoWeek(new Date());
-    renderMeta(); drawSpecTable(); drawOutbreaks(); drawBacktest(); setWeek(CURW);
+    renderMeta(); drawSpecTable(); drawOutbreaks(); drawBacktest(); drawNodes(); drawForecast(); setWeek(CURW);
   } catch (e) {
     document.getElementById("meta").innerHTML = `<span class="dot"></span><span>model.json недоступен</span>`;
   }

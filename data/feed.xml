@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<rss version="2.0" xmlns:atom="http://www.w3.org/2005/Atom">
+<channel>
+<title>VetFlu — окна риска ВПГП</title>
+<link>https://shray77.github.io/vetflu-site/</link>
+<description>Ежедневный индекс риска заноса высокопатогенного гриппа птиц по 4 флайвеям России: R = max(M, C, Z) × MW × MB. События — смены фазы риска.</description>
+<language>ru</language>
+<lastBuildDate>Sat, 10 Oct 2026 17:07:41 GMT</lastBuildDate>
+<atom:link href="https://shray77.github.io/vetflu-site/feed.xml" rel="self" type="application/rss+xml" />
+<item>
+<title>Старт наблюдения: В-Атл R100 транзит (окно высокого риска) · Черном. R43 транзит (умеренное движение) · Центр-Аз R61 транзит (активный пролёт) · В-Азия R54 транзит (активный пролёт)</title>
+<link>https://shray77.github.io/vetflu-site/</link>
+<guid isPermaLink="false">vetflu-2026-10-10-1m2s8z5</guid>
+<pubDate>Sat, 10 Oct 2026 12:00:00 GMT</pubDate>
+<description>Начало ежедневной истории индекса R = max(M, C, Z) × MW × MB. В-Атл R100 транзит (окно высокого риска); Черном. R43 транзит (умеренное движение); Центр-Аз R61 транзит (активный пролёт); В-Азия R54 транзит (активный пролёт).</description>
+</item>
+</channel>
+</rss>
