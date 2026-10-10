@@ -1,0 +1,1 @@
+{"updated":"2026-10-10T15:48:02.086Z","source":"Open-Meteo: archive 2015–2024 (нормы) + forecast past7/next7","current_available":false,"note":"HTTP 429","formulas":{"A":"clamp(-anomaly/8,0,1)","F":"share(Tmin<0, 14d)","W":"clamp(0.6A+0.4F,0,1)","P":"clamp(1-(T+5)/40,0.25,1)","MW":"0.70+0.45W+0.25P","R":"M*MW"},"per_flyway":{}}

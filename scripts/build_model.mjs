@@ -13,13 +13,25 @@
  * Фаза 2 добавит множитель погоды W (вет-метео: форсаж холодом, ледостав, персистентность),
  * фаза 3 — фон заносов B (EMPRES-i/WOAH/vet-heatmap) с валидацией по волнам 2020–2023.
  */
-import { readFileSync, writeFileSync, statSync } from "node:fs";
+import { readFileSync, writeFileSync, statSync, existsSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import { dirname, join } from "node:path";
 
 const ROOT = dirname(dirname(fileURLToPath(import.meta.url)));
 const M = JSON.parse(readFileSync(join(ROOT, "data", "migration.json"), "utf8"));
 const WEEKS = 52;
+
+// фаза 2: погодные множители (если есть свежий weather.json — штампуем R на текущую неделю)
+const WF = join(ROOT, "data", "weather.json");
+let weather = null;
+if (existsSync(WF)) {
+  try {
+    const w = JSON.parse(readFileSync(WF, "utf8"));
+    const ageDays = (Date.now() - new Date(w.updated).getTime()) / 86400000;
+    if (w.current_available && ageDays <= 7 && Object.keys(w.per_flyway || {}).length) weather = w;
+    else console.warn(`weather skipped: current_available=${w.current_available}, age=${ageDays.toFixed(1)}d`);
+  } catch (e) { console.warn("weather.json unreadable:", e.message); }
+}
 
 const gauss = (w, peak, sigma) => Math.exp(-((w - peak) ** 2) / (2 * sigma * sigma));
 const clamp = (v, lo, hi) => Math.min(hi, Math.max(lo, v));
@@ -44,16 +56,17 @@ const out = {
   source: "data/migration.json v" + M.version,
   model: {
     ...M.model,
-    formula: "M_fw(week)=96*Σ_g(w_g*m_g,fw*(gaussA+springFactor*gaussS))/max_fw + resident_base",
+    formula: "R = M * (0.70 + 0.45*W + 0.25*P); M_fw(week)=96*Σ_g(w_g*m_g,fw*(gaussA+springFactor*gaussS))/max_fw + resident_base",
     factors: {
-      M: "миграционная фаза — активна (фаза 1)",
-      W: "погодный форсаж (вет-метео) — фаза 2",
-      P: "персистентность вируса (температура) — фаза 2",
+      M: "миграционная фаза — активна",
+      W: "погодный форсаж (аномалия холода, ледостав) — активна (Open-Meteo)",
+      P: "персистентность вируса (температура) — активна",
       B: "фон заносов (EMPRES-i/WOAH/vet-heatmap) — фаза 3",
     },
   },
   flyways: M.flyways,
   species: M.species,
+  weather: weather ? { updated: weather.updated, source: weather.source, formulas: weather.formulas, per_flyway: weather.per_flyway } : null,
   series: {},
 };
 
@@ -93,6 +106,15 @@ for (const fw of M.flyways) {
         .map(([id]) => id),
     };
   });
+  // фаза 2: R = M × MW на текущую неделю (погода относится к «сейчас», не ко всем 52 неделям)
+  let stamped = null;
+  if (weather && weather.per_flyway[fw.id]) {
+    const cw = Math.min(WEEKS, isoWeekNow());
+    const row = weeks[cw - 1];
+    const r = Math.round(clamp(row.m * weather.per_flyway[fw.id].mw, 0, 100));
+    row.r = r; row.ph_r = phaseLabel(r);
+    stamped = r;
+  }
   const peakAutumn = weeks.reduce((a, b) => (b.seas.startsWith("осенний") && b.m > weeks[a - 1].m ? b.w : a), 1);
   const peakM = Math.max(...weeks.map((x) => x.m));
   out.series[fw.id] = { weeks, peak_autumn_week: peakAutumn, peak_m: peakM };
@@ -102,10 +124,13 @@ const file = join(ROOT, "data", "model.json");
 writeFileSync(file, JSON.stringify(out));
 const kb = (statSync(file).size / 1024).toFixed(1);
 for (const [id, s] of Object.entries(out.series)) {
-  const cur = s.weeks[isoWeek(new Date()) - 1];
-  console.log(`${id}: peak autumn w${s.peak_autumn_week} (M up to ${s.peak_m}); now w${isoWeek(new Date())} M=${cur.m} (${cur.ph})`);
+  const cur = s.weeks[isoWeekNow() - 1];
+  console.log(`${id}: peak autumn w${s.peak_autumn_week} (M up to ${s.peak_m}); now w${isoWeekNow()} M=${cur.m}${cur.r != null ? ` R=${cur.r} (${cur.ph_r})` : " (no weather)"} — ${cur.ph}`);
 }
-console.log(`OK data/model.json (${kb} KB)`);
+console.log(`OK data/model.json (${kb} KB)${weather ? " · weather embedded" : " · weather: none"}`);
+function isoWeekNow() {
+  return isoWeek(new Date());
+}
 function isoWeek(d) {
   const t = new Date(Date.UTC(d.getFullYear(), d.getMonth(), d.getDate()));
   const day = t.getUTCDay() || 7;

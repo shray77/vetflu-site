@@ -4,9 +4,9 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>VetFlu — окна риска заноса гриппа птиц</title>
-<meta name="description" content="Предиктивные окна риска заноса высокопатогенного гриппа птиц (ВПГП) в РФ: миграционная фаза пролёта по 4 флайвеям, 8 групп видов-резервуаров, 52-недельный календарь. Фаза 1 модели: миграция; далее — погода vet-meteo и фон вспышек.">
+<meta name="description" content="Предиктивные окна риска заноса высокопатогенного гриппа птиц (ВПГП) в РФ: миграционная фаза пролёта по 4 флайвеям, 8 групп видов-резервуаров, 52-недельный календарь + погодный слой — аномалии холода, ледостав, персистентность вируса (Open-Meteo, ежедневно). Далее — фон вспышек.">
 <meta property="og:title" content="VetFlu — окна риска заноса гриппа птиц">
-<meta property="og:description" content="Индекс миграционного пролёта по 4 флайвеям России: когда и где водоплавающие создают окна риска заноса ВПГП. Фаза 1: календарь пролёта; фаза 2: погода; фаза 3: фон вспышек.">
+<meta property="og:description" content="Индекс риска заноса ВПГП по 4 флайвеям России: миграционная фаза × погодный форсаж × персистентность вируса. Календарь пролёта + живая погода (Open-Meteo, ежедневно); фон вспышек — фаза 3.">
 <meta property="og:type" content="website">
 <meta property="og:url" content="https://shray77.github.io/vetflu-site/">
 <meta name="twitter:card" content="summary">
@@ -157,7 +157,7 @@
       <div class="logo">🦆</div>
       <div>
         <h1>VetFlu — окна риска ВПГП</h1>
-        <p>Предиктивный календарь заноса высокопатогенного гриппа птиц: миграционная фаза пролёта по 4 флайвеям России.</p>
+        <p>Индекс риска заноса высокопатогенного гриппа птиц: миграционная фаза пролёта × погодный форсаж по 4 флайвеям России.</p>
       </div>
     </div>
     <div class="live" id="meta"><span class="dot"></span><span>загрузка…</span></div>
@@ -185,7 +185,7 @@
 
   <section class="strip-card">
     <h2>Календарь пролёта по неделям года</h2>
-    <p class="sub">Каждая строка — флайвей, каждая ячейка — неделя года (1–52). Цвет = индекс M: чем теплее, тем плотнее транзит водоплавающих. Клик по ячейке — показать эту неделю.</p>
+    <p class="sub">Каждая строка — флайвей, каждая ячейка — неделя года (1–52). Цвет = миграционный индекс M: чем теплее, тем плотнее транзит водоплавающих. Погодный множитель применяется только к текущей неделе — на карточках ниже. Клик по ячейке — показать эту неделю.</p>
     <div class="strip" id="strip"></div>
   </section>
 
@@ -199,7 +199,7 @@
   </section>
 
   <article class="doc" id="method">
-    <h2>Как это считается <span class="phase-badge p1">фаза 1 · миграция</span></h2>
+    <h2>Как это считается <span class="phase-badge p1">фаза 1–2 · миграция + погода</span></h2>
     <p>Индекс <b>M (0–100)</b> — агрегированная миграционная фаза по флайвею: взвешенный вклад групп видов-резервуаров, у каждой из которых заданы осеннее и весеннее окна пролёта, пик и размах (σ = размах/6). Осенний транзит учитывается полным весом, весенний — ослабленным (0.62), плюс постоянный фоновый уровень резидентных птиц. Пики сдвинуты по флайвеям: на юге осенний транзит проходит позже — птица добирается с севера, весенний — раньше.</p>
     <p><b>Честно о данных:</b> окна и пики — экспертная параметризация по орнитологическим сводкам (флайвеи BirdLife/Wetlands International, региональные фенокалендари России), а не расчёт по сырым наблюдениям. Следующий шаг уточнения — недельная абундантность eBird Status &amp; Trends и GPS-треки Movebank: структура модели это позволяет без её пересборки.</p>
     <div class="thresholds">
@@ -208,14 +208,15 @@
       <div class="thr"><b style="color:#fbbf24">45–74 — активный пролёт</b>массовый транзит, остановки на водоёмах</div>
       <div class="thr"><b style="color:#f87171">≥ 75 — окно высокого риска</b>пик: молодняк, плотные скопления, контакт с домашней птицей вероятен</div>
     </div>
-    <p>Индекс M — только <b>первый из четырёх факторов</b>. Полный индекс риска заноса: <b>M</b> × погодный форсаж <b>W</b> (резкие похолодания, ледостав, концентрация на полыньях — данные vet-meteo) × персистентность вируса <b>P</b> (H5N1 живёт в холодной воде недели, в тёплой — дни) × фон заносов <b>B</b> (свежие вспышки вверх по флайвею). Погода и фон появятся в фазах 2–3.</p>
+    <p><b>Погодный слой (фаза 2):</b> итоговый индекс <b>R = M × MW</b>, где MW = 0.70 + 0.45·W + 0.25·P — погода может усилить миграционный риск до +40% или ослабить до −30%. <b>W — форсаж движений</b> = 0.6·A + 0.4·F: A — аномалия холода (средняя за 7 дней против нормы той же даты 2015–2024; −8°C и холоднее — максимум), F — доля суток с минусом за 14 дней (прошедшие + прогнозные; прокси ледостава и концентрации птицы на полыньях). <b>P — персистентность</b> = clamp(1 − (T+5)/40): H5N1 в холодной воде живёт недели, в тёплой — дни. Погода — Open-Meteo (архив + прогноз), 4 точки на флайвей, пересчёт — GitHub Actions ежедневно; W и P — прозрачные эвристики, а не калиброванная эпидемиология.</p>
+    <p>Активны три фактора из четырёх: <b>M</b> (миграция), <b>W</b> (погодный форсаж) и <b>P</b> (персистентность). Останется фон заносов <b>B</b> — свежие вспышки вверх по флайвею (EMPRES-i/WOAH/vet-heatmap) с бэктест-калибровкой, фаза 3.</p>
   </article>
 
   <article class="doc" id="roadmap">
-    <h2>Дорожная карта <span class="phase-badge p2">фаза 2 · погода</span><span class="phase-badge p3">фаза 3 · фон вспышек</span></h2>
+    <h2>Дорожная карта <span class="phase-badge p1">фаза 2 · погода готова</span><span class="phase-badge p3">фаза 3 · фон вспышек</span></h2>
     <ul>
       <li><b>Фаза 1 (готова):</b> календарь пролёта, индекс M, витрина с картой и скраббером недель. Пересчёт — статический, параметризация уточняется по справочникам.</li>
-      <li><b>Фаза 2:</b> множитель W из данных <a href="https://shray77.github.io/vet-meteo/">vet-meteo</a> — аномалии холода за 7–14 дней, первый ледостав и снежный покров (форс-миграции), температура воды/воздуха для персистентности P. Холодный октябрь сгоняет птицу югом раньше и дольше держит вирус в водоёмах.</li>
+      <li><b>Фаза 2 (готова):</b> множители W и P подключены — аномалии холода против норм 2015–2024, ледостав (доля суток с минусом за 14 дней), персистентность по средней температуре. Источник — Open-Meteo, та же безключевая API, что под капотом <a href="https://shray77.github.io/vet-meteo/">vet-meteo</a>, но точки по всем флайвеям РФ (вет-метео детализирован на Ростовскую область). Пересчёт — GitHub Actions ежедневно. Холодный октябрь сгоняет птицу югом раньше и дольше держит вирус в водоёмах.</li>
       <li><b>Фаза 3:</b> множитель B из живых источников вспышек — FAO EMPRES-i, WOAH WAHIS (уже скрейпится ВетКартой), плюс бэктест-калибровка по историческим волнам. Публикация индекса в JSON для других сервисов экосистемы.</li>
     </ul>
   </article>
@@ -235,7 +236,7 @@
 <footer>
   <div class="wrap foot">
     <span class="legal">информационный сервис · не ветеринарный совет · прогноз ознакомительный · <a href="./terms.html">условия и дисклеймер</a></span>
-    <span>данные: <a href="./data/model.json">model.json</a> · календарь — экспертная параметризация, расчёт недель локальный</span>
+    <span>данные: <a href="./data/model.json">model.json</a> · календарь — экспертная параметризация · погода — Open-Meteo (ежедневно)</span>
     <a href="https://shray77.github.io/vet-meteo/">метео-данные →</a>
     <a href="https://github.com/shray77/vetflu-site">репозиторий</a>
   </div>
@@ -243,7 +244,7 @@
 
 <script src="./vendor/leaflet.js"></script>
 <script>
-let M = null, week = 1, fwSel = "ea";
+let M = null, week = 1, fwSel = "ea", CURW = 1;
 let map = null, lines = {}, hubLayer = null;
 
 const esc = (s) => String(s).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
@@ -276,6 +277,9 @@ function mColor(m) {
   return "#3b4a61";
 }
 function specName(id) { const s = M.species.find(x => x.id === id); return s ? s.label : id; }
+function wj(fwId) { return M.weather && M.weather.per_flyway[fwId]; }
+function isNow() { return week === CURW; }
+function disp(fwId, s) { const w = wj(fwId); return (isNow() && w && s.r != null) ? s.r : s.m; }
 function shifted(sp, kind, fwId) {
   const fw = M.flyways.find(f => f.id === fwId);
   const k = sp[kind], sh = fw.shift[kind === "autumn" ? "autumn" : "spring"];
@@ -294,14 +298,15 @@ function drawMap() {
   if (!map) { document.getElementById("map-note").textContent = "карта недоступна (leaflet не загрузился)"; return; }
   for (const fw of M.flyways) {
     const s = M.series[fw.id].weeks[week - 1];
+    const v = disp(fw.id, s);
     const paths = fw.path ? [fw.path] : (fw.paths || []);
-    const weight = 2 + s.m / 13;
-    const opacity = .25 + .75 * (s.m / 100);
+    const weight = 2 + v / 13;
+    const opacity = .25 + .75 * (v / 100);
     if (lines[fw.id]) { for (const l of lines[fw.id]) map.removeLayer(l); }
     lines[fw.id] = paths.map(p => L.polyline(p, {
       color: fw.color, weight, opacity, lineCap: "round",
     }).bindPopup(
-      `<b>${esc(fw.label)}</b><br>M = ${s.m} · ${esc(s.ph)}<br>${esc(s.seas)}<br><span style="color:#93a0b4">${esc(fw.regions)}</span>`
+      `<b>${esc(fw.label)}</b><br>${disp(fw.id, s) !== s.m ? `R = ${disp(fw.id, s)} <span style="color:#93a0b4">(M ${s.m} × погода ${wj(fw.id).mw})</span>` : `M = ${s.m}`} · ${esc(isNow() && s.r != null ? (s.ph_r || s.ph) : s.ph)}<br>${esc(s.seas)}<br><span style="color:#93a0b4">${esc(fw.regions)}</span>`
     ).addTo(map));
     fw.hubs.forEach(h => L.circleMarker(h.ll, { radius: 3.5, color: "#e8ecf3", weight: 1, fillColor: fw.color, fillOpacity: .9 })
       .bindPopup(`<b>${esc(h.name)}</b><br><span style="color:#93a0b4">узел концентраций · ${esc(fw.label)}</span>`).addTo(hubLayer));
@@ -311,37 +316,47 @@ function drawMap() {
 }
 
 function drawStats() {
-  const cur = M.flyways.map(f => ({ f, s: M.series[f.id].weeks[week - 1] }));
-  const top = cur.slice().sort((a, b) => b.s.m - a.s.m)[0];
-  const hot = cur.filter(x => x.s.m >= 75).length;
+  const cur = M.flyways.map(f => { const s = M.series[f.id].weeks[week - 1]; return { f, s, v: disp(f.id, s) }; });
+  const top = cur.slice().sort((a, b) => b.v - a.v)[0];
+  const hot = cur.filter(x => x.v >= 75).length;
   const peaks = M.flyways.map(f => `${f.short} н${M.series[f.id].peak_autumn_week}`).join(" · ");
   const y = new Date().getUTCFullYear();
   const a = weekMonday(y, week), b = new Date(a); b.setUTCDate(a.getUTCDate() + 6);
   const f = (d) => d.getUTCDate() + " " + MONTHS[d.getUTCMonth()];
   document.getElementById("stats").innerHTML =
     `<div class="stat"><b style="color:var(--accent)">${week}</b><span>неделя года · ${f(a)} — ${f(b)}</span></div>` +
-    `<div class="stat"><b style="color:${mColor(top.s.m)}">${top.s.m}</b><span>макс M сейчас — ${esc(top.f.label)}</span></div>` +
-    `<div class="stat"><b style="color:${hot ? "var(--red)" : "var(--text)"}">${hot}</b><span>флайвеев в окне высокого риска (M≥75)</span></div>` +
+    `<div class="stat"><b style="color:${mColor(top.v)}">${top.v}</b><span>${isNow() && M.weather ? "макс R сейчас (M × погода) — " : "макс M сейчас — "}${esc(top.f.label)}</span></div>` +
+    `<div class="stat"><b style="color:${hot ? "var(--red)" : "var(--text)"}">${hot}</b><span>флайвеев в окне высокого риска (≥75)</span></div>` +
     `<div class="stat"><b style="font-size:15px;padding-top:6px">${esc(peaks)}</b><span>пики осеннего пролёта (неделя)</span></div>`;
 }
 
 function drawFlyways() {
   document.getElementById("flyways").innerHTML = M.flyways.map(fw => {
     const s = M.series[fw.id].weeks[week - 1];
+    const v = disp(fw.id, s);
+    const w = wj(fw.id);
+    const now = isNow() && w;
     const win = M.series[fw.id].weeks.filter(x => x.m >= 60 && x.seas.startsWith("осенний"));
     const winTxt = win.length ? `осеннее окно (M≥60): н${win[0].w}–н${win[win.length - 1].w}` : "осеннее окно M≥60: нет";
     const topTxt = s.top.map(specName).join(", ") || "—";
+    const phase = now && s.r != null ? s.ph_r : s.ph;
+    const factors = now
+      ? `<span class="factor on">M ✓</span>` +
+        `<span class="factor on" title="аномалия ${w.anomaly_c}°C к норме 2015–2024 · лёд: ${Math.round(w.frost14 * 100)}% суток с минусом за 14 дней">W ✓ · аномалия ${w.anomaly_c > 0 ? "+" : ""}${w.anomaly_c}°C</span>` +
+        `<span class="factor on" title="персистентность при средней T ${w.tmean7_c}°C (7 дней)">P ✓ · ${w.p}</span>` +
+        `<span class="factor">B · фаза 3</span>`
+      : `<span class="factor on">M ✓</span><span class="factor">W</span><span class="factor">P</span><span class="factor">B · фаза 3</span>`;
+    const sub = now && s.r != null
+      ? `сейчас: M ${s.m} × MW ${w.mw} = R ${s.r}${s.ph_r !== s.ph ? " · " + s.ph_r : ""}`
+      : (M.weather ? "погодный множитель — к текущей неделе (кнопка «сегодня»)" : "погода: нет свежих данных — миграционная база M");
     return `<div class="fw" style="border-top-color:${fw.color}">
       <h3>${esc(fw.label)}</h3>
       <div class="reg">${esc(fw.regions)}</div>
-      <div class="mrow"><span class="m" style="color:${mColor(s.m)}">${s.m}</span>
-        <span class="ph" style="color:${mColor(s.m)};border-color:${mColor(s.m)}">${esc(s.ph)}</span></div>
+      <div class="mrow"><span class="m" style="color:${mColor(v)}">${v}</span>
+        <span class="ph" style="color:${mColor(v)};border-color:${mColor(v)}">${esc(phase)}</span></div>
       <div class="seas">${esc(s.seas)} · ведут: ${esc(topTxt)}</div>
-      <div class="factors">
-        <span class="factor on">M ✓</span><span class="factor">W · фаза 2</span>
-        <span class="factor">P · фаза 2</span><span class="factor">B · фаза 3</span>
-      </div>
-      <div class="win">${esc(winTxt)} · пик осени: н${M.series[fw.id].peak_autumn_week}</div>
+      <div class="factors">${factors}</div>
+      <div class="win">${esc(sub)}<br>${esc(winTxt)} · пик осени: н${M.series[fw.id].peak_autumn_week}</div>
     </div>`;
   }).join("");
 }
@@ -386,8 +401,9 @@ function setWeek(w) {
 }
 
 function renderMeta() {
+  const wt = M.weather ? ` · погода ${esc(M.weather.updated.slice(0, 10))}` : " · погода: ожидается";
   document.getElementById("meta").innerHTML =
-    `<span class="dot ok"></span><span>${esc(M.model.version)} · сборка ${esc(M.generated_at.slice(0, 10))}</span>`;
+    `<span class="dot ok"></span><span>${esc(M.model.version)} · сборка ${esc(M.generated_at.slice(0, 10))}${wt}</span>`;
   document.getElementById("legend").innerHTML = M.flyways.map(fw =>
     `<span><i style="background:${fw.color}"></i>${esc(fw.short)}</span>`).join("");
 }
@@ -395,7 +411,8 @@ function renderMeta() {
 async function boot() {
   try {
     M = await (await fetch("./data/model.json", { cache: "no-store" })).json();
-    renderMeta(); drawSpecTable(); setWeek(isoWeek(new Date()));
+    CURW = isoWeek(new Date());
+    renderMeta(); drawSpecTable(); setWeek(CURW);
   } catch (e) {
     document.getElementById("meta").innerHTML = `<span class="dot"></span><span>model.json недоступен</span>`;
   }
