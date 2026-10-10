@@ -291,7 +291,7 @@ history.updated = new Date().toISOString();
 writeFileSync(HF, JSON.stringify(history));
 out.history = history.records.slice(-90);
 
-// ---- v2.0: RSS-лента (data/feed.xml) — смены фазы риска (ph_r) между соседними днями истории ----
+// ---- v2.0: RSS-лента (feed.xml в корне — URL рекламируется витриной и self-link'ом) — смены фазы риска (ph_r) между соседними днями истории ----
 const SITE = "https://shray77.github.io/vetflu-site/";
 const xmlEsc = (s) => String(s).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
 const recPhase = (v) => (v && v.r != null ? phaseLabel(v.r) : null);
@@ -344,7 +344,7 @@ const feedXml =
     `<guid isPermaLink="false">vetflu-${it.date}-${strHash(it.title)}</guid>\n` +
     `<pubDate>${pubDate(it.date)}</pubDate>\n<description>${xmlEsc(it.desc)}</description>\n</item>\n`).join("") +
   `</channel>\n</rss>\n`;
-writeFileSync(join(ROOT, "data", "feed.xml"), feedXml);
+writeFileSync(join(ROOT, "feed.xml"), feedXml);
 
 const file = join(ROOT, "data", "model.json");
 writeFileSync(file, JSON.stringify(out));
