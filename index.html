@@ -1,0 +1,408 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>VetFlu — окна риска заноса гриппа птиц</title>
+<meta name="description" content="Предиктивные окна риска заноса высокопатогенного гриппа птиц (ВПГП) в РФ: миграционная фаза пролёта по 4 флайвеям, 8 групп видов-резервуаров, 52-недельный календарь. Фаза 1 модели: миграция; далее — погода vet-meteo и фон вспышек.">
+<meta property="og:title" content="VetFlu — окна риска заноса гриппа птиц">
+<meta property="og:description" content="Индекс миграционного пролёта по 4 флайвеям России: когда и где водоплавающие создают окна риска заноса ВПГП. Фаза 1: календарь пролёта; фаза 2: погода; фаза 3: фон вспышек.">
+<meta property="og:type" content="website">
+<meta property="og:url" content="https://shray77.github.io/vetflu-site/">
+<meta name="twitter:card" content="summary">
+<link rel="canonical" href="https://shray77.github.io/vetflu-site/">
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🦆</text></svg>">
+<link rel="stylesheet" href="./vendor/leaflet.css">
+<style>
+  :root {
+    color-scheme: dark;
+    --bg: #0b0e14; --surface: #12161f; --surface2: #171c27; --border: #1f2530;
+    --text: #e8ecf3; --muted: #93a0b4; --faint: #5d6a7d;
+    --accent: #38bdf8; --accent-dim: rgba(56,189,248,.12);
+    --red: #f87171; --red-dim: rgba(248,113,113,.12);
+    --orange: #fb923c; --orange-dim: rgba(251,146,60,.12);
+    --amber: #fbbf24; --amber-dim: rgba(251,191,36,.12);
+    --green: #34d399; --violet: #a78bfa;
+    --mono: ui-monospace, "Cascadia Code", Consolas, monospace;
+  }
+  * { box-sizing: border-box; }
+  body { background: var(--bg); color: var(--text); font: 16px/1.6 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; margin: 0; }
+
+  .hub { display: flex; gap: 6px; flex-wrap: wrap; font: 12.5px var(--mono); max-width: 980px; margin: 0 auto; padding: 12px 20px 0; }
+  .hub a { color: var(--muted); text-decoration: none; border: 1px solid var(--border); background: var(--surface); border-radius: 999px; padding: 5px 12px; }
+  .hub a:hover { color: var(--text); border-color: #2c3543; }
+  .hub a.on { color: var(--accent); border-color: rgba(56,189,248,.45); background: var(--accent-dim); }
+
+  header.top {
+    background: linear-gradient(180deg, rgba(56,189,248,.07), transparent 70%);
+    border-bottom: 1px solid var(--border); padding: 22px 0 20px;
+  }
+  .wrap { max-width: 980px; margin: 0 auto; padding: 0 20px; }
+  .topbar { display: flex; align-items: center; justify-content: space-between; gap: 16px; flex-wrap: wrap; }
+  .brand { display: flex; align-items: center; gap: 16px; }
+  .logo { width: 52px; height: 52px; border-radius: 14px; background: var(--accent-dim); border: 1px solid rgba(56,189,248,.35); display: grid; place-items: center; font-size: 26px; }
+  h1 { font-size: 24px; margin: 0; letter-spacing: -.02em; }
+  .brand p { margin: 2px 0 0; color: var(--muted); font-size: 14px; }
+  .live { display: flex; align-items: center; gap: 8px; color: var(--muted); font-size: 13px; font-family: var(--mono); }
+  .dot { width: 8px; height: 8px; border-radius: 50%; background: var(--faint); flex: none; }
+  .dot.ok { background: var(--accent); box-shadow: 0 0 8px rgba(56,189,248,.7); }
+
+  .stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 12px; margin: 24px 0 8px; }
+  .stat { background: var(--surface); border: 1px solid var(--border); border-radius: 12px; padding: 14px 16px; }
+  .stat b { display: block; font-size: 22px; font-weight: 700; letter-spacing: -.02em; }
+  .stat span { color: var(--muted); font-size: 12.5px; }
+
+  .map-card { background: var(--surface); border: 1px solid var(--border); border-radius: 14px; overflow: hidden; margin: 18px 0 8px; }
+  #map { height: 460px; width: 100%; background: #0d1220; }
+  .map-note { font: 11.5px var(--mono); color: var(--faint); padding: 8px 14px; border-top: 1px solid var(--border); display: flex; justify-content: space-between; gap: 10px; flex-wrap: wrap; }
+  .map-note .legend { display: flex; gap: 12px; flex-wrap: wrap; }
+  .map-note .legend i { display: inline-block; width: 14px; height: 4px; border-radius: 2px; margin-right: 5px; vertical-align: 3px; }
+  .leaflet-tile-pane { filter: brightness(.6) contrast(1.15) saturate(.6); }
+  .leaflet-popup-content-wrapper { background: #12161f; color: #e8ecf3; border-radius: 10px; border: 1px solid #2c3543; }
+  .leaflet-popup-tip { background: #12161f; }
+  .leaflet-popup-content { margin: 12px 16px; font: 13px/1.5 system-ui; }
+
+  .scrubber { display: flex; align-items: center; gap: 12px; padding: 12px 14px; border-top: 1px solid var(--border); flex-wrap: wrap; }
+  .scrubber label { font: 12.5px var(--mono); color: var(--muted); white-space: nowrap; }
+  .scrubber input[type=range] { flex: 1 1 220px; accent-color: var(--accent); }
+  .scrubber .wk { font: 700 13px var(--mono); color: var(--accent); min-width: 210px; }
+  .btn-mini { background: var(--surface2); border: 1px solid var(--border); color: var(--muted); font: 12px var(--mono); border-radius: 999px; padding: 6px 12px; cursor: pointer; }
+  .btn-mini:hover { color: var(--accent); border-color: rgba(56,189,248,.45); }
+
+  .flyways { display: grid; grid-template-columns: repeat(auto-fit, minmax(230px, 1fr)); gap: 12px; margin: 18px 0 8px; }
+  .fw { background: var(--surface); border: 1px solid var(--border); border-top: 3px solid var(--faint); border-radius: 14px; padding: 14px 16px; }
+  .fw h3 { margin: 0 0 2px; font-size: 15.5px; letter-spacing: -.01em; }
+  .fw .reg { color: var(--faint); font: 11.5px var(--mono); margin-bottom: 10px; }
+  .fw .mrow { display: flex; align-items: baseline; gap: 10px; margin-bottom: 6px; }
+  .fw .m { font-size: 34px; font-weight: 750; letter-spacing: -.03em; line-height: 1; }
+  .fw .ph { font: 700 11px var(--mono); text-transform: uppercase; letter-spacing: .06em; padding: 3px 9px; border-radius: 999px; border: 1px solid var(--border); }
+  .fw .seas { color: var(--muted); font-size: 13px; margin-bottom: 8px; }
+  .fw .top { color: var(--faint); font-size: 12.5px; margin-bottom: 10px; }
+  .fw .factors { display: flex; gap: 6px; flex-wrap: wrap; }
+  .fw .factor { font: 700 10.5px var(--mono); padding: 2px 8px; border-radius: 999px; border: 1px solid var(--border); color: var(--faint); background: var(--surface2); }
+  .fw .factor.on { color: var(--accent); border-color: rgba(56,189,248,.4); background: var(--accent-dim); }
+  .fw .win { margin-top: 10px; padding-top: 8px; border-top: 1px solid var(--border); font: 11.5px var(--mono); color: var(--muted); }
+
+  .strip-card { background: var(--surface); border: 1px solid var(--border); border-radius: 14px; padding: 14px 16px; margin: 18px 0 8px; }
+  .strip-card h2, section > h2, .panel h2 { font-size: 17px; margin: 0 0 4px; letter-spacing: -.01em; }
+  .sub { color: var(--muted); font-size: 13.5px; margin: 0 0 12px; }
+  .strip { display: grid; gap: 3px; }
+  .strip .row { display: grid; grid-template-columns: 74px 1fr; gap: 8px; align-items: center; }
+  .strip .row .nm { font: 11.5px var(--mono); color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .strip .cells { display: grid; grid-template-columns: repeat(52, 1fr); gap: 2px; }
+  .strip .cell { height: 16px; border-radius: 2px; cursor: pointer; background: #263042; }
+  .strip .cell.cur { outline: 2px solid var(--text); outline-offset: -1px; z-index: 1; }
+  .strip .wkbar { display: grid; grid-template-columns: 74px 1fr; gap: 8px; margin-top: 6px; }
+  .strip .wkcells { display: grid; grid-template-columns: repeat(52, 1fr); gap: 2px; font: 9px var(--mono); color: var(--faint); }
+  .strip .wkcells span { text-align: left; }
+
+  .panel { background: var(--surface); border: 1px solid var(--border); border-radius: 14px; padding: 16px 18px; margin: 18px 0 8px; }
+  .chips { display: flex; gap: 8px; flex-wrap: wrap; margin: 8px 0 14px; }
+  .chip-btn { background: var(--surface); border: 1px solid var(--border); color: var(--muted); font: 12px var(--mono); border-radius: 999px; padding: 6px 12px; cursor: pointer; transition: .15s; }
+  .chip-btn:hover { color: var(--text); }
+  .chip-btn.active { color: var(--accent); border-color: rgba(56,189,248,.45); background: var(--accent-dim); }
+  table.spec { width: 100%; border-collapse: collapse; font-size: 13.5px; }
+  table.spec th { text-align: left; color: var(--faint); font: 700 11px var(--mono); text-transform: uppercase; letter-spacing: .05em; padding: 6px 8px; border-bottom: 1px solid var(--border); }
+  table.spec td { padding: 8px; border-bottom: 1px solid var(--border); vertical-align: top; }
+  table.spec tr:last-child td { border-bottom: none; }
+  table.spec .nm b { font-size: 14px; }
+  table.spec .lat { color: var(--faint); font: 11px var(--mono); }
+  table.spec .win { font: 12px var(--mono); white-space: nowrap; }
+  table.spec .win em { font-style: normal; color: var(--accent); }
+  table.spec .pk { color: var(--amber); }
+  table.spec .wbar { display: inline-block; height: 6px; border-radius: 3px; vertical-align: 2px; margin-right: 6px; }
+  table.spec .note { color: var(--muted); font-size: 12.5px; }
+
+  article.doc { background: var(--surface); border: 1px solid var(--border); border-radius: 14px; padding: 18px 22px; margin: 14px 0; }
+  article.doc h2 { font-size: 17px; margin: 0 0 10px; }
+  article.doc p { margin: 8px 0; color: var(--muted); }
+  article.doc p b, article.doc li b { color: var(--text); }
+  article.doc ul { margin: 8px 0; padding-left: 20px; color: var(--muted); }
+  article.doc li { margin: 5px 0; }
+  .phase-badge { display: inline-block; font: 700 10.5px var(--mono); letter-spacing: .06em; text-transform: uppercase; padding: 2px 9px; border-radius: 999px; margin-left: 8px; vertical-align: 2px; }
+  .phase-badge.p1 { color: var(--green); background: rgba(52,211,153,.12); border: 1px solid rgba(52,211,153,.4); }
+  .phase-badge.p2 { color: var(--amber); background: var(--amber-dim); border: 1px dashed rgba(251,191,36,.5); }
+  .phase-badge.p3 { color: var(--faint); background: var(--surface2); border: 1px dashed var(--border); }
+  .thresholds { display: grid; grid-template-columns: repeat(auto-fit, minmax(190px, 1fr)); gap: 10px; margin: 12px 0; }
+  .thr { border: 1px solid var(--border); border-radius: 10px; padding: 10px 12px; font-size: 12.5px; color: var(--muted); }
+  .thr b { display: block; font: 700 13px var(--mono); margin-bottom: 2px; }
+  a { color: var(--blue, #7dd3fc); text-decoration: none; }
+  a:hover { text-decoration: underline; }
+
+  footer { border-top: 1px solid var(--border); margin-top: 40px; padding: 18px 0 30px; }
+  .foot { display: flex; gap: 18px; flex-wrap: wrap; font-size: 13px; color: var(--faint); }
+  .foot a { color: var(--muted); text-decoration: none; }
+  .foot a:hover { color: var(--accent); }
+  .foot .legal { color: var(--orange); }
+
+  @media (max-width: 640px) {
+    .strip .row { grid-template-columns: 52px 1fr; }
+    .strip .wkbar { grid-template-columns: 52px 1fr; }
+    .fw .m { font-size: 28px; }
+  }
+</style>
+</head>
+<body>
+<nav class="hub">
+  <a href="https://shray77.github.io/vetdigest-site/">🐾 Дайджест науки</a>
+  <a href="https://shray77.github.io/vetrecall-site/">🚨 Отзывы и вспышки РФ</a>
+  <a href="https://shray77.github.io/biothreat-site/">🌍 Биоугрозы мира</a>
+  <a href="https://shray77.github.io/vetflu-site/" class="on">🦆 Окна риска ВПГП</a>
+  <a href="https://shray77.github.io/rss-core-site/">🛰️ Статус ядра</a>
+</nav>
+
+<header class="top">
+  <div class="wrap topbar">
+    <div class="brand">
+      <div class="logo">🦆</div>
+      <div>
+        <h1>VetFlu — окна риска ВПГП</h1>
+        <p>Предиктивный календарь заноса высокопатогенного гриппа птиц: миграционная фаза пролёта по 4 флайвеям России.</p>
+      </div>
+    </div>
+    <div class="live" id="meta"><span class="dot"></span><span>загрузка…</span></div>
+  </div>
+</header>
+
+<main class="wrap">
+  <section class="stats" id="stats"></section>
+
+  <section class="map-card">
+    <div id="map"></div>
+    <div class="scrubber">
+      <label for="week">неделя</label>
+      <input id="week" type="range" min="1" max="52" step="1" value="1">
+      <span class="wk" id="wk-label">—</span>
+      <button class="btn-mini" id="btn-now" type="button">сегодня</button>
+    </div>
+    <div class="map-note">
+      <span id="map-note">толщина коридора = индекс пролёта M; точки — узлы концентраций водоплавающих</span>
+      <span class="legend" id="legend"></span>
+    </div>
+  </section>
+
+  <section class="flyways" id="flyways"></section>
+
+  <section class="strip-card">
+    <h2>Календарь пролёта по неделям года</h2>
+    <p class="sub">Каждая строка — флайвей, каждая ячейка — неделя года (1–52). Цвет = индекс M: чем теплее, тем плотнее транзит водоплавающих. Клик по ячейке — показать эту неделю.</p>
+    <div class="strip" id="strip"></div>
+  </section>
+
+  <section class="panel">
+    <h2>Виды-резервуары и их окна</h2>
+    <p class="sub">Группы, из которых складывается индекс: вес осеннего/весеннего окна, пики и сдвиг по выбранному флайвею. Веса отражают роль группы в экологии H5N1.</p>
+    <div class="chips" id="fw-chips"></div>
+    <div style="overflow-x:auto">
+      <table class="spec" id="spec-table"></table>
+    </div>
+  </section>
+
+  <article class="doc" id="method">
+    <h2>Как это считается <span class="phase-badge p1">фаза 1 · миграция</span></h2>
+    <p>Индекс <b>M (0–100)</b> — агрегированная миграционная фаза по флайвею: взвешенный вклад групп видов-резервуаров, у каждой из которых заданы осеннее и весеннее окна пролёта, пик и размах (σ = размах/6). Осенний транзит учитывается полным весом, весенний — ослабленным (0.62), плюс постоянный фоновый уровень резидентных птиц. Пики сдвинуты по флайвеям: на юге осенний транзит проходит позже — птица добирается с севера, весенний — раньше.</p>
+    <p><b>Честно о данных:</b> окна и пики — экспертная параметризация по орнитологическим сводкам (флайвеи BirdLife/Wetlands International, региональные фенокалендари России), а не расчёт по сырым наблюдениям. Следующий шаг уточнения — недельная абундантность eBird Status &amp; Trends и GPS-треки Movebank: структура модели это позволяет без её пересборки.</p>
+    <div class="thresholds">
+      <div class="thr"><b style="color:#5d6a7d">&lt; 15 — фон</b>межсезонный минимум, локальные резидентные птицы</div>
+      <div class="thr"><b style="color:#7dd3fc">15–44 — умеренное движение</b>начало/затухание сезона, первые косяки</div>
+      <div class="thr"><b style="color:#fbbf24">45–74 — активный пролёт</b>массовый транзит, остановки на водоёмах</div>
+      <div class="thr"><b style="color:#f87171">≥ 75 — окно высокого риска</b>пик: молодняк, плотные скопления, контакт с домашней птицей вероятен</div>
+    </div>
+    <p>Индекс M — только <b>первый из четырёх факторов</b>. Полный индекс риска заноса: <b>M</b> × погодный форсаж <b>W</b> (резкие похолодания, ледостав, концентрация на полыньях — данные vet-meteo) × персистентность вируса <b>P</b> (H5N1 живёт в холодной воде недели, в тёплой — дни) × фон заносов <b>B</b> (свежие вспышки вверх по флайвею). Погода и фон появятся в фазах 2–3.</p>
+  </article>
+
+  <article class="doc" id="roadmap">
+    <h2>Дорожная карта <span class="phase-badge p2">фаза 2 · погода</span><span class="phase-badge p3">фаза 3 · фон вспышек</span></h2>
+    <ul>
+      <li><b>Фаза 1 (готова):</b> календарь пролёта, индекс M, витрина с картой и скраббером недель. Пересчёт — статический, параметризация уточняется по справочникам.</li>
+      <li><b>Фаза 2:</b> множитель W из данных <a href="https://shray77.github.io/vet-meteo/">vet-meteo</a> — аномалии холода за 7–14 дней, первый ледостав и снежный покров (форс-миграции), температура воды/воздуха для персистентности P. Холодный октябрь сгоняет птицу югом раньше и дольше держит вирус в водоёмах.</li>
+      <li><b>Фаза 3:</b> множитель B из живых источников вспышек — FAO EMPRES-i, WOAH WAHIS (уже скрейпится ВетКартой), плюс бэктест-калибровка по историческим волнам. Публикация индекса в JSON для других сервисов экосистемы.</li>
+    </ul>
+  </article>
+
+  <article class="doc" id="validation">
+    <h2>Проверка глазами: волны 2020–2023</h2>
+    <p>Календарь согласуется с тем, как волны ВПГП заходили в Россию в последние сезоны (описательно, не бэктест — строгая калибровка в фазе 3):</p>
+    <ul>
+      <li><b>Осень 2020:</b> заносы на юг ЕТР (Крым, Ростовская, Волгоградская, Астраханская) — конец осеннего транзита, недели 44–49 по нашему календарю на Черноморско-Средиземноморском флайвее.</li>
+      <li><b>Лето–осень 2021:</b> клад 2.3.4.4b закрепился через морские колонии и северо-запад, осенью пошёл каскад по всей европейской части — октябрь–декабрь, ровно окна позднеосеннего пролёта уток и лебедей.</li>
+      <li><b>Ноябрь 2022 — зима 2023:</b> массовая гибель диких птиц на Каспии (Дагестан) — как раз позднеосенние скопления на зимовках после транзита.</li>
+      <li><b>С 2021 по настоящее время:</b> чайковые (Laridae) — ключевой вектор волны, поэтому их вес в модели поднят, а окно дисперсии (август–ноябрь) начинается раньше утиных.</li>
+    </ul>
+  </article>
+</main>
+
+<footer>
+  <div class="wrap foot">
+    <span class="legal">информационный сервис · не ветеринарный совет · прогноз ознакомительный · <a href="./terms.html">условия и дисклеймер</a></span>
+    <span>данные: <a href="./data/model.json">model.json</a> · календарь — экспертная параметризация, расчёт недель локальный</span>
+    <a href="https://shray77.github.io/vet-meteo/">метео-данные →</a>
+    <a href="https://github.com/shray77/vetflu-site">репозиторий</a>
+  </div>
+</footer>
+
+<script src="./vendor/leaflet.js"></script>
+<script>
+let M = null, week = 1, fwSel = "ea";
+let map = null, lines = {}, hubLayer = null;
+
+const esc = (s) => String(s).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+const MONTHS = ["янв","фев","мар","апр","мая","июн","июл","авг","сен","окт","ноя","дек"];
+
+function isoWeek(d) {
+  const t = new Date(Date.UTC(d.getFullYear(), d.getMonth(), d.getDate()));
+  const day = t.getUTCDay() || 7;
+  t.setUTCDate(t.getUTCDate() + 4 - day);
+  const y0 = new Date(Date.UTC(t.getUTCFullYear(), 0, 1));
+  return Math.ceil(((t - y0) / 86400000 + 1) / 7);
+}
+function weekMonday(y, w) {
+  const jan4 = new Date(Date.UTC(y, 0, 4));
+  const dow = jan4.getUTCDay() || 7;
+  const d = new Date(jan4);
+  d.setUTCDate(jan4.getUTCDate() - (dow - 1) + (w - 1) * 7);
+  return d;
+}
+function wkLabel(w) {
+  const y = new Date().getUTCFullYear();
+  const a = weekMonday(y, w), b = new Date(a); b.setUTCDate(a.getUTCDate() + 6);
+  const f = (d) => d.getUTCDate() + " " + MONTHS[d.getUTCMonth()];
+  return `нед ${w} · ${f(a)} — ${f(b)}`;
+}
+function mColor(m) {
+  if (m >= 75) return "#f87171";
+  if (m >= 45) return "#fbbf24";
+  if (m >= 15) return "#38bdf8";
+  return "#3b4a61";
+}
+function specName(id) { const s = M.species.find(x => x.id === id); return s ? s.label : id; }
+function shifted(sp, kind, fwId) {
+  const fw = M.flyways.find(f => f.id === fwId);
+  const k = sp[kind], sh = fw.shift[kind === "autumn" ? "autumn" : "spring"];
+  return { s: Math.min(52, k.start + sh), p: Math.min(52, k.peak + sh), e: Math.min(52, k.end + sh) };
+}
+
+function initMap() {
+  if (map || typeof L === "undefined") return;
+  map = L.map("map", { scrollWheelZoom: false }).setView([58, 55], 3);
+  L.tileLayer("https://tile.openstreetmap.org/{z}/{x}/{y}.png", { attribution: "© OpenStreetMap", maxZoom: 8 }).addTo(map);
+  hubLayer = L.layerGroup().addTo(map);
+}
+
+function drawMap() {
+  initMap();
+  if (!map) { document.getElementById("map-note").textContent = "карта недоступна (leaflet не загрузился)"; return; }
+  for (const fw of M.flyways) {
+    const s = M.series[fw.id].weeks[week - 1];
+    const paths = fw.path ? [fw.path] : (fw.paths || []);
+    const weight = 2 + s.m / 13;
+    const opacity = .25 + .75 * (s.m / 100);
+    if (lines[fw.id]) { for (const l of lines[fw.id]) map.removeLayer(l); }
+    lines[fw.id] = paths.map(p => L.polyline(p, {
+      color: fw.color, weight, opacity, lineCap: "round",
+    }).bindPopup(
+      `<b>${esc(fw.label)}</b><br>M = ${s.m} · ${esc(s.ph)}<br>${esc(s.seas)}<br><span style="color:#93a0b4">${esc(fw.regions)}</span>`
+    ).addTo(map));
+    fw.hubs.forEach(h => L.circleMarker(h.ll, { radius: 3.5, color: "#e8ecf3", weight: 1, fillColor: fw.color, fillOpacity: .9 })
+      .bindPopup(`<b>${esc(h.name)}</b><br><span style="color:#93a0b4">узел концентраций · ${esc(fw.label)}</span>`).addTo(hubLayer));
+  }
+  document.getElementById("map-note").textContent =
+    `неделя ${week}: толщина коридора = индекс пролёта M · точки — узлы концентраций водоплавающих`;
+}
+
+function drawStats() {
+  const cur = M.flyways.map(f => ({ f, s: M.series[f.id].weeks[week - 1] }));
+  const top = cur.slice().sort((a, b) => b.s.m - a.s.m)[0];
+  const hot = cur.filter(x => x.s.m >= 75).length;
+  const peaks = M.flyways.map(f => `${f.short} н${M.series[f.id].peak_autumn_week}`).join(" · ");
+  const y = new Date().getUTCFullYear();
+  const a = weekMonday(y, week), b = new Date(a); b.setUTCDate(a.getUTCDate() + 6);
+  const f = (d) => d.getUTCDate() + " " + MONTHS[d.getUTCMonth()];
+  document.getElementById("stats").innerHTML =
+    `<div class="stat"><b style="color:var(--accent)">${week}</b><span>неделя года · ${f(a)} — ${f(b)}</span></div>` +
+    `<div class="stat"><b style="color:${mColor(top.s.m)}">${top.s.m}</b><span>макс M сейчас — ${esc(top.f.label)}</span></div>` +
+    `<div class="stat"><b style="color:${hot ? "var(--red)" : "var(--text)"}">${hot}</b><span>флайвеев в окне высокого риска (M≥75)</span></div>` +
+    `<div class="stat"><b style="font-size:15px;padding-top:6px">${esc(peaks)}</b><span>пики осеннего пролёта (неделя)</span></div>`;
+}
+
+function drawFlyways() {
+  document.getElementById("flyways").innerHTML = M.flyways.map(fw => {
+    const s = M.series[fw.id].weeks[week - 1];
+    const win = M.series[fw.id].weeks.filter(x => x.m >= 60 && x.seas.startsWith("осенний"));
+    const winTxt = win.length ? `осеннее окно (M≥60): н${win[0].w}–н${win[win.length - 1].w}` : "осеннее окно M≥60: нет";
+    const topTxt = s.top.map(specName).join(", ") || "—";
+    return `<div class="fw" style="border-top-color:${fw.color}">
+      <h3>${esc(fw.label)}</h3>
+      <div class="reg">${esc(fw.regions)}</div>
+      <div class="mrow"><span class="m" style="color:${mColor(s.m)}">${s.m}</span>
+        <span class="ph" style="color:${mColor(s.m)};border-color:${mColor(s.m)}">${esc(s.ph)}</span></div>
+      <div class="seas">${esc(s.seas)} · ведут: ${esc(topTxt)}</div>
+      <div class="factors">
+        <span class="factor on">M ✓</span><span class="factor">W · фаза 2</span>
+        <span class="factor">P · фаза 2</span><span class="factor">B · фаза 3</span>
+      </div>
+      <div class="win">${esc(winTxt)} · пик осени: н${M.series[fw.id].peak_autumn_week}</div>
+    </div>`;
+  }).join("");
+}
+
+function drawStrip() {
+  document.getElementById("strip").innerHTML = M.flyways.map(fw =>
+    `<div class="row"><span class="nm" style="color:${fw.color}">${esc(fw.short)}</span>
+     <span class="cells">${M.series[fw.id].weeks.map(x =>
+      `<i class="cell${x.w === week ? " cur" : ""}" data-w="${x.w}" title="н${x.w}: M=${x.m} ${esc(x.ph)}" style="background:${mColor(x.m)}"></i>`).join("")}</span></div>`
+  ).join("") +
+  `<div class="wkbar"><span></span><span class="wkcells">${
+    [1, 6, 11, 16, 21, 26, 31, 36, 41, 46, 51].map(w => `<span>${w}</span>`).join("")}</span></div>`;
+  document.querySelectorAll("#strip .cell").forEach(c => c.onclick = () => setWeek(+c.dataset.w));
+}
+
+function drawSpecTable() {
+  document.getElementById("fw-chips").innerHTML = M.flyways.map(fw =>
+    `<button class="chip-btn ${fw.id === fwSel ? "active" : ""}" data-v="${fw.id}">${esc(fw.label)}</button>`).join("");
+  document.querySelectorAll("#fw-chips .chip-btn").forEach(b => b.onclick = () => { fwSel = b.dataset.v; drawSpecTable(); });
+  const fw = M.flyways.find(f => f.id === fwSel);
+  document.getElementById("spec-table").innerHTML =
+    `<tr><th>группа</th><th>вес</th><th>весна (${esc(fw.short)})</th><th>осень (${esc(fw.short)})</th><th>роль в экологии H5N1</th></tr>` +
+    M.species.map(sp => {
+      const spr = shifted(sp, "spring", fwSel), aut = shifted(sp, "autumn", fwSel);
+      const wf = sp.fw[fwSel] ?? 0;
+      const wcol = fw.color;
+      return `<tr>
+        <td class="nm"><b>${esc(sp.label)}</b><br><span class="lat">${esc(sp.latin)}</span></td>
+        <td><span class="wbar" style="width:${Math.round(38 * sp.weight * wf)}px;background:${wcol}"></span><span style="color:var(--faint);font:11px var(--mono)">${(sp.weight * wf).toFixed(2)}</span></td>
+        <td class="win">н${spr.s}–${spr.e} · пик <span class="pk">н${spr.p}</span></td>
+        <td class="win">н${aut.s}–${aut.e} · пик <span class="pk">н${aut.p}</span></td>
+        <td class="note">${esc(sp.note)}</td>
+      </tr>`;
+    }).join("");
+}
+
+function setWeek(w) {
+  week = Math.min(52, Math.max(1, w));
+  document.getElementById("week").value = week;
+  document.getElementById("wk-label").textContent = wkLabel(week);
+  drawStats(); drawFlyways(); drawStrip(); drawMap();
+}
+
+function renderMeta() {
+  document.getElementById("meta").innerHTML =
+    `<span class="dot ok"></span><span>${esc(M.model.version)} · сборка ${esc(M.generated_at.slice(0, 10))}</span>`;
+  document.getElementById("legend").innerHTML = M.flyways.map(fw =>
+    `<span><i style="background:${fw.color}"></i>${esc(fw.short)}</span>`).join("");
+}
+
+async function boot() {
+  try {
+    M = await (await fetch("./data/model.json", { cache: "no-store" })).json();
+    renderMeta(); drawSpecTable(); setWeek(isoWeek(new Date()));
+  } catch (e) {
+    document.getElementById("meta").innerHTML = `<span class="dot"></span><span>model.json недоступен</span>`;
+  }
+}
+document.getElementById("week").oninput = (e) => setWeek(+e.target.value);
+document.getElementById("btn-now").onclick = () => setWeek(isoWeek(new Date()));
+boot();
+</script>
+</body>
+</html>
