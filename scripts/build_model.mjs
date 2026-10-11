@@ -123,7 +123,7 @@ const out = {
   source: "data/migration.json v" + M.version,
   model: {
     ...M.model,
-    formula: "R = max(M, C, Z) × MW × MB — три канала риска в шкале 0–100: M транзит (миграционный календарь 8 групп видов), C колонии = 100·c_fw·gauss(w, peak=28, σ) (гнездовые скопления, июнь–август), Z зимовки = 100·z_fw·trap(w) (трапеция ноябрь–март с заворотом через Новый год); MW = 0.70 + 0.45*W + 0.25*P; MB = 0.85 + 0.30*B; chan = argmax(M,C,Z)",
+    formula: "R = max(M, C, Z) × MW × MB × BP — три канала риска в шкале 0–100: M транзит (миграционный календарь 8 групп видов), C колонии = 100·c_fw·gauss(w, peak=28, σ) (гнездовые скопления, июнь–август), Z зимовки = 100·z_fw·trap(w) (трапеция ноябрь–март с заворотом через Новый год); MW = 0.70 + 0.45*W + 0.25*P; MB = 0.85 + 0.30*B; BP = 1.00 + 0.20·(1−exp(−bp_raw/4)) — входящее давление от стран-граничников РФ (окно 21 день); chan = argmax(M,C,Z)",
     factors: {
       M: "транзитный канал — миграционная фаза пролёта",
       C: "колониальный канал — гнездовые скопления (июнь–август)",
@@ -131,6 +131,7 @@ const out = {
       W: weather ? "погодный форсаж (аномалия холода, ледостав) — активна (Open-Meteo)" : "погодный форсаж — нет свежих данных, MW = 1.00",
       P: weather ? "персистентность вируса (температура) — активна" : "персистентность — нет свежих данных",
       B: outbreaks ? "фон заносов (WOAH WAHIS) — активна" : "фон заносов (WOAH WAHIS) — нет свежих данных, MB = 1.00",
+      BP: outbreaks ? "входящее давление (WOAH WAHIS, страны-граничники РФ, окно 21 дн) — активен" : "входящее давление — нет свежих данных, BP = 1.00",
     },
   },
   channels: {
@@ -195,16 +196,17 @@ for (const fw of M.flyways) {
         .map(([id]) => id),
     };
   });
-  // фазы 2–3: R = max(M, C, Z) × MW × MB — только на текущую неделю (живые данные относятся к «сейчас»)
+  // фазы 2–4: R = max(M, C, Z) × MW × MB × BP — только на текущую неделю (живые данные относятся к «сейчас»)
   const cw = Math.min(WEEKS, isoWeekNow());
   const row = weeks[cw - 1];
   const mw = weather && weather.per_flyway[fw.id] ? weather.per_flyway[fw.id].mw : 1;
   const obf = outbreaks && outbreaks.per_flyway[fw.id] ? outbreaks.per_flyway[fw.id] : null;
   const mb = obf ? obf.mb : 1;
+  const bp = obf && obf.bp ? obf.bp : 1; // v2.1: входящее давление (страны-граничники, 21 дн); нет данных → 1.00
   if (weather || obf) {
-    const rawMax = Math.max(row.m, row.c, row.z) * mw * mb;
+    const rawMax = Math.max(row.m, row.c, row.z) * mw * mb * bp;
     const r = Math.round(clamp(rawMax, 0, 100));
-    row.r = r; row.ph_r = phaseLabel(r); row.mw = mw; row.mb = mb; row.b = obf ? obf.b : null;
+    row.r = r; row.ph_r = phaseLabel(r); row.mw = mw; row.mb = mb; row.bp = bp; row.b = obf ? obf.b : null;
     row.chan = chanWinner(row); // канал-победитель argmax(M,C,Z)
     row.sat = rawMax > 100; // инфо-флаг сатурации: сырой max > 100 до клампа
   }
@@ -217,8 +219,8 @@ for (const fw of M.flyways) {
 // MW узла считается из уже скачанных данных weather.json per_flyway[fw].points[]:
 // A = clamp(-anomaly/8, 0, 1); F = frost14; W = clamp(0.6A+0.4F, 0, 1);
 // P = clamp(1-(obs7+5)/40, 0.25, 1); mw_n = 0.70 + 0.45W + 0.25P.
-// R_node = round(clamp(chan_value × mw_n × mb, 0, 100)), chan_value — статическое
-// значение доминирующего канала флайвея на текущей неделе.
+// R_node = round(clamp(chan_value × mw_n × mb × bp, 0, 100)) (v2.1: + BP флайвея),
+// chan_value — статическое значение доминирующего канала флайвея на текущей неделе.
 // канал-победитель недели (argmax по статическим значениям каналов, транзит приоритетен при равенстве)
 function chanWinner(row) {
   return row.m >= row.c && row.m >= row.z ? "transit" : row.c >= row.z ? "colonies" : "wintering";
@@ -228,6 +230,7 @@ const cw = Math.min(WEEKS, isoWeekNow());
 for (const fw of M.flyways) {
   const row = out.series[fw.id].weeks[cw - 1];
   const mb = row.mb ?? 1;
+  const bp = row.bp ?? 1;
   const live = weather && weather.per_flyway[fw.id];
   const wpoints = live ? weather.per_flyway[fw.id].points || [] : [];
   const nodes = (PTS.flyways[fw.id] || []).map((p) => {
@@ -239,13 +242,13 @@ for (const fw of M.flyways) {
       w = r2(clamp(0.6 * A + 0.4 * F, 0, 1));
       pv = r2(clamp(1 - (wp.obs7_c + 5) / 40, 0.25, 1));
       mwN = r2(0.70 + 0.45 * w + 0.25 * pv);
-      r = Math.round(clamp(row[CHAN_KEY[row.chan]] * mwN * mb, 0, 100));
+      r = Math.round(clamp(row[CHAN_KEY[row.chan]] * mwN * mb * bp, 0, 100));
     }
     return {
       id: p.id, name: p.name, lat: p.lat, lon: p.lon, share: p.share,
       anomaly_c: wp ? wp.anomaly_c : null, frost14: wp ? wp.frost14 : null,
       w, p: pv, mw: mwN, colony: !!p.colony, wintering: !!p.wintering,
-      chan: row.chan, chan_value: row[CHAN_KEY[row.chan]], mb, r,
+      chan: row.chan, chan_value: row[CHAN_KEY[row.chan]], mb, bp, r,
     };
   });
   out.nodes[fw.id] = nodes;
@@ -280,7 +283,7 @@ for (const fw of M.flyways) {
   const row = out.series[fw.id].weeks[cw - 1];
   rec.per_flyway[fw.id] = {
     m: row.m, c: row.c, z: row.z, chan: row.chan,
-    mw: row.mw ?? null, mb: row.mb ?? null, r: row.r ?? null,
+    mw: row.mw ?? null, mb: row.mb ?? null, bp: row.bp ?? null, r: row.r ?? null,
   };
 }
 const idx = history.records.findIndex((x) => x.date === today);
@@ -352,7 +355,7 @@ const kb = (statSync(file).size / 1024).toFixed(1);
 for (const [id, s] of Object.entries(out.series)) {
   const cur = s.weeks[isoWeekNow() - 1];
   const decomp = cur.r != null
-    ? ` R=${cur.r} (max M${cur.m}, C${cur.c}, Z${cur.z} × MW${cur.mw} × MB${cur.mb}) ${CHAN_LABEL[cur.chan]}${cur.sat ? " ⚠сатурация" : ""} — ${cur.ph_r}`
+    ? ` R=${cur.r} (max M${cur.m}, C${cur.c}, Z${cur.z} × MW${cur.mw} × MB${cur.mb} × BP${cur.bp ?? 1}) ${CHAN_LABEL[cur.chan]}${cur.sat ? " ⚠сатурация" : ""} — ${cur.ph_r}`
     : " (live-множителей нет — чистые каналы)";
   console.log(`${id}: peak autumn w${s.peak_autumn_week} (M up to ${s.peak_m}); now w${isoWeekNow()}${decomp} — ${cur.ph}`);
 }

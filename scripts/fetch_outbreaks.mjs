@@ -11,6 +11,14 @@
  * B_fw = clamp(raw / 10, 0, 1) — сатурация на 10 условных «свежих вспышечных единицах».
  * MB_fw = 0.85 + 0.30 * B_fw (диапазон 0.85–1.15).
  *
+ * v2.1: входящее давление BP — страны, граничащие с РФ в коридоре флайвея.
+ * WAHIS-лист не содержит координат событий, поэтому «радиус 200 км» заменён
+ * странами-граничниками (сознательное упрощение: активная вспышка ВПГП в стране,
+ * граничащей с РФ, — самостоятельный фактор заноса через сухопутную/морскую границу).
+ * Окно 21 день (резче, чем 60-дневный фон B), вес по свежести: ≤7 дней — 1.0, ≤14 — 0.8, ≤21 — 0.5.
+ * BP_fw = 1.00 + 0.20 * (1 − exp(−raw/4)) — диапазон 1.00–1.20 (BP только усиливает:
+ * тихая граница не ослабляет базовый риск). BP не задним числом: в бэктесте не участвует.
+ *
  * Graceful degradation: WAHIS недоступен → если свежий outbreaks_live.json (≤3 дней) есть,
  * он сохраняется как есть; иначе пишется {available:false} и build_model считает B нейтральным (1.00).
  * Скрипт всегда завершается с кодом 0 — чтобы не ломать ежедневную сборку.
@@ -27,6 +35,22 @@ const MAX_PAGES = 20;
 const WINDOW_DAYS = 60;
 const SATURATION = 10;
 const ADJACENT_W = 0.4;
+
+// ---- v2.1: входящее давление BP — страны-граничники РФ по флайвеям ----
+// ключ — подстрока названия страны в WAHIS (case-insensitive), значение — вес границы
+// (1.0 — протяжённая/значимая для флайвея, 0.5 — короткий сегмент).
+// Кореи не включены: в WAHIS неоднозначные названия («Korea, Rep.» / DPRK), обе не граничат
+// по значимым для водоплавающих сегментам; Япония не граничит с РФ вовсе.
+const BORDER = {
+  ea:  { label: "Балтика/Северо-Запад", countries: { finland: 1.0, estonia: 1.0, latvia: 1.0, lithuania: 0.5, poland: 0.5, belarus: 1.0, ukraine: 1.0, norway: 0.5 } },
+  bsm: { label: "Юг ЕТР/Кавказ/Каспий", countries: { ukraine: 1.0, georgia: 0.5, azerbaijan: 1.0, kazakhstan: 1.0 } },
+  ca:  { label: "Казахстан/Алтай",      countries: { kazakhstan: 1.0, mongolia: 1.0, china: 0.5 } },
+  eaa: { label: "ДВ/Китай/Монголия",    countries: { china: 1.0, mongolia: 1.0 } },
+};
+const BP_WINDOW_DAYS = 21;
+const BP_SATURATION = 4; // P = 1 − exp(−raw/4)
+const BP_GAIN = 0.20;    // BP = 1.00 + 0.20·P
+const bpRecency = (days) => (days <= 7 ? 1.0 : days <= 14 ? 0.8 : 0.5);
 
 const FLYWAYS = ["ea", "bsm", "ca", "eaa"];
 
@@ -106,7 +130,7 @@ async function fetchAll() {
 function aggregate(events) {
   const now = Date.now();
   const per = {};
-  for (const fid of FLYWAYS) per[fid] = { raw: 0, ev14: 0, ev30: 0, ev60: 0, ongoing: 0, fresh: [] };
+  for (const fid of FLYWAYS) per[fid] = { raw: 0, ev14: 0, ev30: 0, ev60: 0, ongoing: 0, fresh: [], bp_raw: 0, bp_events: [] };
   const countries = new Set();
   let hpai60 = 0;
 
@@ -136,13 +160,27 @@ function aggregate(events) {
         days,
       });
     }
+    // ---- v2.1: вклад в BP (только страны-граничники, окно 21 день) ----
+    if (days > BP_WINDOW_DAYS) continue;
+    const n = String(e.country || "").toLowerCase();
+    for (const fid of FLYWAYS) {
+      const bmap = BORDER[fid].countries;
+      let bw = 0;
+      for (const [key, weight] of Object.entries(bmap)) if (n.includes(key)) { bw = weight; break; }
+      if (!bw) continue;
+      per[fid].bp_raw += bpRecency(days) * bw;
+      per[fid].bp_events.push({ c: e.country, days, st: e.eventStatus === "On-going" ? "ongoing" : "resolved", id: e.eventId });
+    }
   }
 
   const out = {};
   for (const fid of FLYWAYS) {
     const p = per[fid];
     const b = clamp(p.raw / SATURATION, 0, 1);
+    const bpP = 1 - Math.exp(-p.bp_raw / BP_SATURATION);
+    const bp = 1 + BP_GAIN * bpP;
     p.fresh.sort((a, x) => a.days - x.days);
+    p.bp_events.sort((a, x) => a.days - x.days);
     out[fid] = {
       b: Math.round(b * 1000) / 1000,
       mb: Math.round((0.85 + 0.3 * b) * 1000) / 1000,
@@ -152,6 +190,11 @@ function aggregate(events) {
       ev60: p.ev60,
       ongoing: p.ongoing,
       top: p.fresh.slice(0, 5),
+      // v2.1: входящее давление
+      bp: Math.round(bp * 1000) / 1000,
+      bp_raw: Math.round(p.bp_raw * 100) / 100,
+      bp_events: p.bp_events.slice(0, 5),
+      bp_countries: [...new Set(p.bp_events.map((x) => x.c))].sort(),
     };
   }
   return { per: out, hpai60, countries: [...countries].sort() };
@@ -169,8 +212,8 @@ async function main() {
       source: "WOAH WAHIS — публичный API wahis.woah.org (официальные уведомления)",
       window_days: WINDOW_DAYS,
       saturation: SATURATION,
-      formula: "B = clamp(raw/10, 0, 1); MB = 0.85 + 0.30*B; raw = Σ w_recency × (1.0 страна коридора | 0.4 смежная)",
-      weights: { recency: { d14: 1.0, d30: 0.6, d60: 0.3 }, adjacent_country: ADJACENT_W },
+      formula: "B = clamp(raw/10, 0, 1); MB = 0.85 + 0.30*B; raw = Σ w_recency × (1.0 страна коридора | 0.4 смежная); BP = 1.00 + 0.20·(1−exp(−bp_raw/4)) — страны-граничники РФ, окно 21 день",
+      weights: { recency: { d14: 1.0, d30: 0.6, d60: 0.3 }, adjacent_country: ADJACENT_W, bp: { window_days: BP_WINDOW_DAYS, recency: { d7: 1.0, d14: 0.8, d21: 0.5 }, saturation: BP_SATURATION, gain: BP_GAIN, borders: BORDER } },
       total_events: events.length,
       hpai_events_60d: hpai60,
       countries_60d: countries,
@@ -179,7 +222,7 @@ async function main() {
     writeFileSync(OUT, JSON.stringify(out));
     for (const fid of FLYWAYS) {
       const p = per[fid];
-      console.log(`${fid}: B=${p.b} MB=${p.mb} (raw ${p.raw}) · ${p.ev30} соб./30д, ${p.ev60}/60д, ongoing ${p.ongoing}`);
+      console.log(`${fid}: B=${p.b} MB=${p.mb} · BP=${p.bp} (raw ${p.bp_raw}, ${p.bp_countries.join(", ") || "тихо"}) · ${p.ev30} соб./30д, ${p.ev60}/60д, ongoing ${p.ongoing}`);
     }
     console.log(`OK data/outbreaks_live.json (HPAI 60д: ${hpai60}, страны: ${countries.length})`);
   } catch (err) {
