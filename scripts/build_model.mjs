@@ -14,13 +14,16 @@
  *     [start→full1 подъём 0→1; full1→full2 плато 1; full2→end спад 1→0]
  *     с заворотом через границу года (дуги окружности 1..52).
  *
- * Итог: R = max(M, C, Z) × MW × MB, где MW = 0.70+0.45W+0.25P (Open-Meteo),
- * MB = 0.85+0.30B (WOAH WAHIS). Живые множители штампуются только на текущую неделю
+ * Итог: R = max(M, C, Z) × MW × MB × BP × WD, где MW = 0.70+0.45W+0.25P (Open-Meteo),
+ * MB = 0.85+0.30B (WOAH WAHIS), BP = 1.00+0.20·(1−exp(−bp_raw/4)) — страны-граничники,
+ * WD = 1.00+0.15·(1−exp(−wd_raw/2)) — ветровой перенос в сторону РФ (v2.2, Open-Meteo 72 ч
+ * на опорных точках границы). Живые множители штампуются только на текущую неделю
  * (данные относятся к «сейчас»); chan — канал-победитель argmax(M,C,Z).
  *
  * Фаза 2: weather.json; Фаза 3: outbreaks_live.json; v2.0: узловая детализация
  * (16 узлов points.json — свой MW по метеоточке), история R (history.json),
  * бэктест v2 по трём каналам, RSS-лента (feed.xml) смен фазы риска.
+ * v2.1: BP (границы, фаза 4); v2.2: WD (ветровой занос, фаза 5) + приграничные веса в borders.mjs.
  */
 import { readFileSync, writeFileSync, statSync, existsSync } from "node:fs";
 import { fileURLToPath } from "node:url";
@@ -88,6 +91,62 @@ if (existsSync(OF)) {
   } catch (e) { console.warn("outbreaks_live.json unreadable:", e.message); }
 }
 
+// фаза 5 (v2.2): ветровой перенос WD — свежий wind_live.json (fetch_wind.mjs, ≤2 дней)
+const WNDF = join(ROOT, "data", "wind_live.json");
+let wind = null;
+if (existsSync(WNDF)) {
+  try {
+    const w = JSON.parse(readFileSync(WNDF, "utf8"));
+    const ageDays = (Date.now() - new Date(w.updated).getTime()) / 86400000;
+    if (w.available && ageDays <= 2 && Array.isArray(w.points) && w.points.length) wind = w;
+    else console.warn(`wind skipped: available=${w.available}, age=${ageDays.toFixed(1)}d`);
+  } catch (e) { console.warn("wind_live.json unreadable:", e.message); }
+}
+
+// v2.1/v2.2: приграничные страны/веса — общий модуль с fetch_outbreaks.mjs
+import { bpRecency, borderWeight } from "./borders.mjs";
+
+// ---- v2.2: ветровой перенос WD по флайвею ----
+// Вклад дают только страны с активной (≤21 дн) вспышкой из WAHIS bp_events:
+// вклад события = bpRecency(days) × borderWeight(fw, страна) × ws (max wind_score
+// сегментов границы этой страны во флайвее). Без вспышки ветер не считается —
+// физически корректная активация: перенос несёт вирус только там, где он есть.
+// WD = 1.00 + 0.15·(1 − exp(−raw/2)) — только усиление, диапазон 1.00–1.15.
+const WD_GAIN = 0.15;
+const WD_SATURATION = 2;
+function windFw(fwId, obf) {
+  const neutral = { wd: 1, wd_raw: 0, contributing: [] };
+  if (!wind || !obf || !Array.isArray(obf.bp_events) || !obf.bp_events.length) return neutral;
+  const pts = wind.points || [];
+  const byC = {};
+  for (const ev of obf.bp_events) {
+    const bw = borderWeight(fwId, ev.c);
+    if (!bw) continue;
+    const cl = String(ev.c).toLowerCase();
+    if (!byC[cl]) byC[cl] = { country: ev.c, raw: 0, ws: 0 };
+    byC[cl].raw += bpRecency(ev.days);
+    if (byC[cl].ws === 0) {
+      let best = 0;
+      for (const p of pts) {
+        if (!p.flyways || !p.flyways.includes(fwId)) continue;
+        const pc = String(p.country || "").toLowerCase();
+        if (pc === cl || pc.includes(cl) || cl.includes(pc)) { if (p.ws > best) best = p.ws; }
+      }
+      byC[cl].ws = best;
+    }
+  }
+  let raw = 0;
+  const contributing = [];
+  for (const v of Object.values(byC)) {
+    const w = v.raw * v.ws;
+    raw += w;
+    if (w > 0) contributing.push({ country: v.country, raw: r2(v.raw), ws: Math.round(v.ws * 1000) / 1000, contrib: r2(w) });
+  }
+  contributing.sort((a, b) => b.contrib - a.contrib);
+  const wd = 1 + WD_GAIN * (1 - Math.exp(-raw / WD_SATURATION));
+  return { wd: Math.round(wd * 1000) / 1000, wd_raw: Math.round(raw * 100) / 100, contributing: contributing.slice(0, 4) };
+}
+
 // бэктест: ретроспективный прогон каналов по неделям известных волн 2020–2023
 // (только статика каналов — погода и фон задним числом не восстанавливаются)
 const POSTHOC_NOTE = "Канал колонии добавлен в v2.0 пост-хоком после разбора промаха v1 — не считать независимым подтверждением.";
@@ -117,13 +176,14 @@ function seasonLabel(autumnPart, springPart) {
   return "межсезонный фон";
 }
 
+const windPer = {}; // v2.2: {fw: {wd, wd_raw, contributing}} — собирается в цикле серий
 const out = {
   version: M.version,
   generated_at: new Date().toISOString(),
   source: "data/migration.json v" + M.version,
   model: {
     ...M.model,
-    formula: "R = max(M, C, Z) × MW × MB × BP — три канала риска в шкале 0–100: M транзит (миграционный календарь 8 групп видов), C колонии = 100·c_fw·gauss(w, peak=28, σ) (гнездовые скопления, июнь–август), Z зимовки = 100·z_fw·trap(w) (трапеция ноябрь–март с заворотом через Новый год); MW = 0.70 + 0.45*W + 0.25*P; MB = 0.85 + 0.30*B; BP = 1.00 + 0.20·(1−exp(−bp_raw/4)) — входящее давление от стран-граничников РФ (окно 21 день); chan = argmax(M,C,Z)",
+    formula: "R = max(M, C, Z) × MW × MB × BP × WD — три канала риска в шкале 0–100: M транзит (миграционный календарь 8 групп видов), C колонии = 100·c_fw·gauss(w, peak=28, σ) (гнездовые скопления, июнь–август), Z зимовки = 100·z_fw·trap(w) (трапеция ноябрь–март с заворотом через Новый год); MW = 0.70 + 0.45*W + 0.25*P; MB = 0.85 + 0.30*B; BP = 1.00 + 0.20·(1−exp(−bp_raw/4)) — входящее давление от стран-граничников РФ (окно 21 день); WD = 1.00 + 0.15·(1−exp(−wd_raw/2)) — ветровой перенос в сторону РФ при активных вспышках у границы (72 ч, Open-Meteo, опорные точки границы); chan = argmax(M,C,Z)",
     factors: {
       M: "транзитный канал — миграционная фаза пролёта",
       C: "колониальный канал — гнездовые скопления (июнь–август)",
@@ -132,6 +192,7 @@ const out = {
       P: weather ? "персистентность вируса (температура) — активна" : "персистентность — нет свежих данных",
       B: outbreaks ? "фон заносов (WOAH WAHIS) — активна" : "фон заносов (WOAH WAHIS) — нет свежих данных, MB = 1.00",
       BP: outbreaks ? "входящее давление (WOAH WAHIS, страны-граничники РФ, окно 21 дн) — активен" : "входящее давление — нет свежих данных, BP = 1.00",
+      WD: wind ? "ветровой перенос в сторону РФ (Open-Meteo, 72 ч, опорные точки границы) — активен" : "ветровой перенос — нет свежих данных, WD = 1.00",
     },
   },
   channels: {
@@ -142,6 +203,15 @@ const out = {
   flyways: M.flyways,
   species: M.species,
   weather: weather ? { updated: weather.updated, source: weather.source, formulas: weather.formulas, per_flyway: weather.per_flyway } : null,
+  wind: wind ? {
+    available: true,
+    updated: wind.updated, source: wind.source, window_hours: wind.window_hours,
+    min_speed_ms: wind.min_speed_ms, sector_deg: wind.sector_deg, formula: wind.formula,
+    per_flyway: windPer,
+    points_active: (wind.points || []).filter((p) => p.ws > 0).length,
+    points_total: (wind.points || []).length,
+  } : null,
+  alert: null, // v2.2: заполняется ниже (уровень для Telegram-алертов)
   outbreaks: outbreaks ? {
     available: true, // флаг для витрины (obj()/drawOutbreaks) — блок вкладывается только когда данные свежие
     updated: outbreaks.updated, source: outbreaks.source, window_days: outbreaks.window_days,
@@ -196,20 +266,24 @@ for (const fw of M.flyways) {
         .map(([id]) => id),
     };
   });
-  // фазы 2–4: R = max(M, C, Z) × MW × MB × BP — только на текущую неделю (живые данные относятся к «сейчас»)
+  // фазы 2–5: R = max(M, C, Z) × MW × MB × BP × WD — только на текущую неделю (живые данные относятся к «сейчас»)
   const cw = Math.min(WEEKS, isoWeekNow());
   const row = weeks[cw - 1];
   const mw = weather && weather.per_flyway[fw.id] ? weather.per_flyway[fw.id].mw : 1;
   const obf = outbreaks && outbreaks.per_flyway[fw.id] ? outbreaks.per_flyway[fw.id] : null;
   const mb = obf ? obf.mb : 1;
   const bp = obf && obf.bp ? obf.bp : 1; // v2.1: входящее давление (страны-граничники, 21 дн); нет данных → 1.00
+  const windF = windFw(fw.id, obf);     // v2.2: ветровой перенос (вспышки у границы × ветер 72 ч); нет данных → 1.00
+  const wd = windF.wd;
   if (weather || obf) {
-    const rawMax = Math.max(row.m, row.c, row.z) * mw * mb * bp;
+    const rawMax = Math.max(row.m, row.c, row.z) * mw * mb * bp * wd;
     const r = Math.round(clamp(rawMax, 0, 100));
     row.r = r; row.ph_r = phaseLabel(r); row.mw = mw; row.mb = mb; row.bp = bp; row.b = obf ? obf.b : null;
+    row.wd = wd; row.wd_raw = windF.wd_raw;
     row.chan = chanWinner(row); // канал-победитель argmax(M,C,Z)
     row.sat = rawMax > 100; // инфо-флаг сатурации: сырой max > 100 до клампа
   }
+  windPer[fw.id] = windF;
   const peakAutumn = weeks.reduce((a, b) => (b.seas.startsWith("осенний") && b.m > weeks[a - 1].m ? b.w : a), 1);
   const peakM = Math.max(...weeks.map((x) => x.m));
   out.series[fw.id] = { weeks, peak_autumn_week: peakAutumn, peak_m: peakM };
@@ -231,6 +305,7 @@ for (const fw of M.flyways) {
   const row = out.series[fw.id].weeks[cw - 1];
   const mb = row.mb ?? 1;
   const bp = row.bp ?? 1;
+  const wd = row.wd ?? 1; // v2.2
   const live = weather && weather.per_flyway[fw.id];
   const wpoints = live ? weather.per_flyway[fw.id].points || [] : [];
   const nodes = (PTS.flyways[fw.id] || []).map((p) => {
@@ -242,13 +317,13 @@ for (const fw of M.flyways) {
       w = r2(clamp(0.6 * A + 0.4 * F, 0, 1));
       pv = r2(clamp(1 - (wp.obs7_c + 5) / 40, 0.25, 1));
       mwN = r2(0.70 + 0.45 * w + 0.25 * pv);
-      r = Math.round(clamp(row[CHAN_KEY[row.chan]] * mwN * mb * bp, 0, 100));
+      r = Math.round(clamp(row[CHAN_KEY[row.chan]] * mwN * mb * bp * wd, 0, 100));
     }
     return {
       id: p.id, name: p.name, lat: p.lat, lon: p.lon, share: p.share,
       anomaly_c: wp ? wp.anomaly_c : null, frost14: wp ? wp.frost14 : null,
       w, p: pv, mw: mwN, colony: !!p.colony, wintering: !!p.wintering,
-      chan: row.chan, chan_value: row[CHAN_KEY[row.chan]], mb, bp, r,
+      chan: row.chan, chan_value: row[CHAN_KEY[row.chan]], mb, bp, wd, r,
     };
   });
   out.nodes[fw.id] = nodes;
@@ -283,7 +358,7 @@ for (const fw of M.flyways) {
   const row = out.series[fw.id].weeks[cw - 1];
   rec.per_flyway[fw.id] = {
     m: row.m, c: row.c, z: row.z, chan: row.chan,
-    mw: row.mw ?? null, mb: row.mb ?? null, bp: row.bp ?? null, r: row.r ?? null,
+    mw: row.mw ?? null, mb: row.mb ?? null, bp: row.bp ?? null, wd: row.wd ?? null, r: row.r ?? null,
   };
 }
 const idx = history.records.findIndex((x) => x.date === today);
@@ -293,6 +368,12 @@ history.records = history.records.slice(-180);
 history.updated = new Date().toISOString();
 writeFileSync(HF, JSON.stringify(history));
 out.history = history.records.slice(-90);
+
+// ---- v2.2: уровень риска для Telegram-алертов (сравнение и отправка — scripts/send_alert.mjs) ----
+const rVals = M.flyways.map((f) => out.series[f.id].weeks[cw - 1].r).filter((v) => v != null);
+const maxR = rVals.length ? Math.max(...rVals) : null;
+const alertLevel = maxR == null ? "static" : maxR >= 75 ? "alert" : maxR >= 45 ? "watch" : "ok";
+out.alert = { level: alertLevel, max_r: maxR, thresholds: { watch: 45, alert: 75 }, note: "ok<45≤watch<75≤alert; state-файл data/alert_state.json обновляет scripts/send_alert.mjs (пуш только при смене уровня)" };
 
 // ---- v2.0: RSS-лента (feed.xml в корне — URL рекламируется витриной и self-link'ом) — смены фазы риска (ph_r) между соседними днями истории ----
 const SITE = "https://shray77.github.io/vetflu-site/";
@@ -355,12 +436,14 @@ const kb = (statSync(file).size / 1024).toFixed(1);
 for (const [id, s] of Object.entries(out.series)) {
   const cur = s.weeks[isoWeekNow() - 1];
   const decomp = cur.r != null
-    ? ` R=${cur.r} (max M${cur.m}, C${cur.c}, Z${cur.z} × MW${cur.mw} × MB${cur.mb} × BP${cur.bp ?? 1}) ${CHAN_LABEL[cur.chan]}${cur.sat ? " ⚠сатурация" : ""} — ${cur.ph_r}`
+    ? ` R=${cur.r} (max M${cur.m}, C${cur.c}, Z${cur.z} × MW${cur.mw} × MB${cur.mb} × BP${cur.bp ?? 1} × WD${cur.wd ?? 1}) ${CHAN_LABEL[cur.chan]}${cur.sat ? " ⚠сатурация" : ""} — ${cur.ph_r}`
     : " (live-множителей нет — чистые каналы)";
   console.log(`${id}: peak autumn w${s.peak_autumn_week} (M up to ${s.peak_m}); now w${isoWeekNow()}${decomp} — ${cur.ph}`);
 }
 console.log(`nodes: ${Object.entries(out.nodes).map(([fw, ns]) => `${fw}[${ns.map((n) => `${n.id}:${n.r ?? "—"}`).join(",")}]`).join(" ")}`);
 console.log(`backtest v2: ${out.backtest.map((x) => `${x.label.slice(0, 14)}… ${x.fw}/н${x.week} M${x.m}/C${x.c}/Z${x.z}→${CHAN_LABEL[x.chan]} ${x.hit ? "✓" : "✗"}`).join("; ")}`);
+console.log(`wind: ${wind ? `${out.wind.points_total} точек (${out.wind.points_active} с переносом «в РФ») · ${Object.entries(windPer).map(([fw, w]) => `${fw} WD=${w.wd}`).join(", ")}` : "нет свежих данных — WD нейтрален"}`);
+console.log(`alert: ${out.alert.level} (max R ${out.alert.max_r ?? "—"})`);
 console.log(`history: ${history.records.length} записей (кап 180) · feed.xml: ${feedItemsLast.length} событий (из ${feedItems.length})`);
 console.log(`OK data/model.json (${kb} KB)${weather ? " · weather embedded" : " · weather: none"}${outbreaks ? " · outbreaks embedded" : " · outbreaks: none"}`);
 

@@ -6,7 +6,7 @@
 <title>VetFlu — окна риска заноса гриппа птиц</title>
 <meta name="description" content="Предиктивные окна риска заноса высокопатогенного гриппа птиц (ВПГП) в РФ: три канала риска (транзит, колонии, зимовки) по 4 флайвеям, 8 групп видов-резервуаров, 52-недельный календарь + погодный слой (Open-Meteo) + живой фон вспышек WOAH WAHIS — ежедневный пересчёт индекса R.">
 <meta property="og:title" content="VetFlu — окна риска заноса гриппа птиц">
-<meta property="og:description" content="Индекс риска заноса ВПГП по 4 флайвеям России: R = max(транзит, колонии, зимовки) × погодный форсаж × фон вспышек. Календарь пролёта + узловая детализация 16 городов + живые данные (Open-Meteo, WOAH WAHIS) — ежедневный пересчёт.">
+<meta property="og:description" content="Индекс риска заноса ВПГП по 4 флайвеям России: R = max(транзит, колонии, зимовки) × погодный форсаж × фон вспышек × границы × ветер. Календарь пролёта + узловая детализация 16 городов + симулятор «что если» + живые данные (Open-Meteo, WOAH WAHIS) — ежедневный пересчёт.">
 <meta property="og:type" content="website">
 <meta property="og:url" content="https://shray77.github.io/vetflu-site/">
 <meta property="og:image" content="https://shray77.github.io/vetflu-site/og-image.png">
@@ -195,6 +195,30 @@
     .strip .wkbar { grid-template-columns: 52px 1fr; }
     .fw .m { font-size: 28px; }
   }
+
+  /* v2.2: симулятор «что если» */
+  .sim-grid { display: grid; grid-template-columns: 1.2fr 1fr; gap: 18px; }
+  @media (max-width: 760px) { .sim-grid { grid-template-columns: 1fr; } }
+  .sim-row { display: grid; grid-template-columns: 118px 1fr 62px; align-items: center; gap: 10px; margin: 7px 0; }
+  .sim-row label { font-size: 12.5px; color: var(--muted); }
+  .sim-row output { font: 12.5px var(--mono); color: var(--text); text-align: right; }
+  .sim-row input[type=range] { width: 100%; accent-color: var(--accent); }
+  .sim-out { border: 1px solid var(--border); border-radius: 12px; padding: 14px 16px; background: var(--surface2); }
+  .sim-out .big { font-size: 44px; font-weight: 800; line-height: 1; }
+  .sim-out .decomp { font: 12px var(--mono); color: var(--muted); margin-top: 8px; line-height: 1.55; }
+  .sim-chips { margin: 10px 0 4px; }
+  /* v2.2: график истории */
+  #hist-chart svg { width: 100%; height: auto; display: block; background: var(--surface2); border: 1px solid var(--border); border-radius: 12px; padding: 8px; box-sizing: border-box; }
+  .hist-legend { display: flex; flex-wrap: wrap; gap: 12px; font-size: 12px; color: var(--muted); margin-top: 8px; }
+  .hist-legend i { display: inline-block; width: 14px; height: 3px; border-radius: 2px; vertical-align: middle; margin-right: 5px; }
+  .hist-legend .dim { color: var(--faint); }
+  /* v2.2: changelog */
+  .cl-list { list-style: none; padding: 0; margin: 8px 0 0; }
+  .cl-list li { display: grid; grid-template-columns: 64px 84px 1fr; gap: 10px; padding: 9px 0; border-top: 1px solid var(--border); font-size: 13.5px; }
+  .cl-list li:first-child { border-top: none; }
+  .cl-v { font: 12.5px var(--mono); color: var(--accent); font-weight: 700; }
+  .cl-d { font: 12px var(--mono); color: var(--faint); }
+  @media (max-width: 560px) { .cl-list li { grid-template-columns: 56px 1fr; } .cl-d { display: none; } }
 </style>
 </head>
 <body>
@@ -212,7 +236,7 @@
       <div class="logo">🦆</div>
       <div>
         <h1>VetFlu — окна риска ВПГП</h1>
-        <p>Три канала риска заноса высокопатогенного гриппа птиц — транзит × колонии × зимовки — с погодным форсажем, фоном вспышек и входящим давлением с границ по 4 флайвеям России.</p>
+        <p>Три канала риска заноса высокопатогенного гриппа птиц — транзит × колонии × зимовки — с погодным форсажем, фоном вспышек, входящим давлением с границ и ветровым переносом по 4 флайвеям России.</p>
       </div>
     </div>
     <div class="live" id="meta"><span class="dot"></span><span>загрузка…</span></div>
@@ -244,9 +268,15 @@
     <div id="forecast"></div>
   </section>
 
+  <section class="panel" id="hist-panel">
+    <h2>История R — день за днём <span class="phase-badge p1">v2.0+ · наполняется ежедневно</span></h2>
+    <p class="sub">Каждая дневная сборка добавляет точку (06:00 МСК). Пунктир — пороги «активный пролёт» (45) и «окно высокого риска» (75). График оживает с двумя и более днями наблюдений.</p>
+    <div id="hist-chart"></div>
+  </section>
+
   <section class="panel" id="nodes-panel">
-    <h2>Узлы сейчас — 16 узловых точек <span class="phase-badge p1">v2.1 · погода по узлам</span></h2>
-    <p class="sub">Каждый узел — репрезентативная точка флайвея с экспертной долей транзитного потока (share, Σ по флайвею = 1). Погодный множитель считается по метеоточке узла (не усреднение по флайвею): R<sub>узла</sub> = значение ведущего канала флайвея × MW<sub>узла</sub> × MB × BP. Флажки — колониальный канал (гнездовые колонии) и зимовочный (массовые зимовки). Сортировка по убыванию риска.</p>
+    <h2>Узлы сейчас — 16 узловых точек <span class="phase-badge p1">v2.2 · погода по узлам</span></h2>
+    <p class="sub">Каждый узел — репрезентативная точка флайвея с экспертной долей транзитного потока (share, Σ по флайвею = 1). Погодный множитель считается по метеоточке узла (не усреднение по флайвею): R<sub>узла</sub> = значение ведущего канала флайвея × MW<sub>узла</sub> × MB × BP × WD. Флажки — колониальный канал (гнездовые колонии) и зимовочный (массовые зимовки). Сортировка по убыванию риска.</p>
     <div style="overflow-x:auto">
       <table class="spec" id="nodes-table"></table>
     </div>
@@ -256,6 +286,26 @@
     <h2>Фон заносов — свежие вспышки ВПГП <span class="phase-badge p1">фаза 3 · WAHIS live</span></h2>
     <p class="sub">Источник — WOAH WAHIS, публичный API официальных уведомлений (его же скрейпит <a href="https://shray77.github.io/vet-heatmap/">ВетКарта</a>). Окно 60 дней; вес события по свежести последнего рапорта: ≤14 дней — 1.0, ≤30 — 0.6, ≤60 — 0.3; страны коридора — полный вес, смежные — 0.4; сатурация на 10 условных единицах. Множитель MB = 0.85 + 0.30·B сдвигает итоговый индекс на ±15%. Публикация уведомлений отстаёт от реальных событий — фон не заменяет официальные каналы Россельхознадзора (ФСВПС).</p>
     <div id="ob-rows"></div>
+    <p class="sub" style="margin:12px 0 0">Входящее давление BP (страны-граничники) и ветровой перенос WD (сегменты границы, 72 ч) — в строках выше; ветер считается только там, где у соседа активная вспышка.</p>
+  </section>
+
+  <section class="panel" id="sim-panel">
+    <h2>Симулятор «что если» <span class="phase-badge p1">v2.2 · крутите параметры — R пересчитается</span></h2>
+    <p class="sub">Формула v2.2 вживую, без бэкенда: R = max(M, C, Z) × MW × MB × BP × WD. Слайдеры стартуют с текущих значений выбранного флайвея — двигайте любой и смотрите, что решает уровень риска.</p>
+    <div class="sim-chips" id="sim-chips"></div>
+    <div class="sim-grid">
+      <div>
+        <div class="sim-row"><label>M — транзит</label><input id="sim_m" type="range" min="0" max="100" step="1"><output id="sim_m_o"></output></div>
+        <div class="sim-row"><label>C — колонии</label><input id="sim_c" type="range" min="0" max="100" step="1"><output id="sim_c_o"></output></div>
+        <div class="sim-row"><label>Z — зимовки</label><input id="sim_z" type="range" min="0" max="100" step="1"><output id="sim_z_o"></output></div>
+        <div class="sim-row"><label>W — форсаж</label><input id="sim_w" type="range" min="0" max="100" step="1"><output id="sim_w_o"></output></div>
+        <div class="sim-row"><label>P — персистентность</label><input id="sim_p" type="range" min="0.25" max="1" step="0.01"><output id="sim_p_o"></output></div>
+        <div class="sim-row"><label>B — фон заносов</label><input id="sim_b" type="range" min="0" max="1" step="0.01"><output id="sim_b_o"></output></div>
+        <div class="sim-row"><label title="сырой вклад вспышек в странах-граничниках: BP = 1 + 0.20·(1−exp(−raw/4))">bp_raw — границы</label><input id="sim_bpr" type="range" min="0" max="8" step="0.1"><output id="sim_bpr_o"></output></div>
+        <div class="sim-row"><label title="вспышки у границы × попутный ветер 72 ч: WD = 1 + 0.15·(1−exp(−raw/2))">wd_raw — ветер</label><input id="sim_wdr" type="range" min="0" max="6" step="0.1"><output id="sim_wdr_o"></output></div>
+      </div>
+      <div class="sim-out" id="sim-out"></div>
+    </div>
   </section>
 
   <section class="strip-card">
@@ -274,8 +324,8 @@
   </section>
 
   <article class="doc" id="method">
-    <h2>Как это считается <span class="phase-badge p1">фаза 1–4 · v2.1 · каналы + границы</span></h2>
-    <p>С v2.0 модель считает <b>три канала риска</b> по каждому флайвею и берёт максимум: <b>R = max(M, C, Z) × MW × MB × BP</b>. Канал <b>M — транзит (0–100)</b>: агрегированная миграционная фаза пролёта — взвешенный вклад групп видов-резервуаров, у каждой из которых заданы осеннее и весеннее окна пролёта, пик и размах (σ = размах/6). Осенний транзит учитывается полным весом, весенний — ослабленным (0.62), плюс постоянный фоновый уровень резидентных птиц. Пики сдвинуты по флайвеям: на юге осенний транзит проходит позже — птица добирается с севера, весенний — раньше.</p>
+    <h2>Как это считается <span class="phase-badge p1">фаза 1–5 · v2.2 · каналы + границы + ветер</span></h2>
+    <p>С v2.0 модель считает <b>три канала риска</b> по каждому флайвею и берёт максимум: <b>R = max(M, C, Z) × MW × MB × BP × WD</b>. Канал <b>M — транзит (0–100)</b>: агрегированная миграционная фаза пролёта — взвешенный вклад групп видов-резервуаров, у каждой из которых заданы осеннее и весеннее окна пролёта, пик и размах (σ = размах/6). Осенний транзит учитывается полным весом, весенний — ослабленным (0.62), плюс постоянный фоновый уровень резидентных птиц. Пики сдвинуты по флайвеям: на юге осенний транзит проходит позже — птица добирается с севера, весенний — раньше.</p>
     <p><b>Честно о данных:</b> окна и пики — экспертная параметризация по орнитологическим сводкам (флайвеи BirdLife/Wetlands International, региональные фенокалендари России), а не расчёт по сырым наблюдениям. Следующий шаг уточнения — недельная абундантность eBird Status &amp; Trends и GPS-треки Movebank: структура модели это позволяет без её пересборки.</p>
     <div class="thresholds">
       <div class="thr"><b style="color:#5d6a7d">&lt; 15 — фон</b>межсезонный минимум, локальные резидентные птицы</div>
@@ -292,7 +342,7 @@
       <tr><td>Центр-Аз</td><td>0.42 · 5.0</td><td>0.25</td><td>н46 → н50 → н3 → н8</td><td>озёрные колонии юга ЗапСибири; зимовки юга Западной Сибири</td></tr>
     </table>
     <div class="posthoc"><b>Честная оговорка о пост-хоке:</b> колониальный канал добавлен в v2.0 после разбора промаха v1 по летней каспийской волне 2021. Его попадание в бэктесте по этой волне — <b>не независимое подтверждение</b> модели, а встроенное объяснение уже известного события. Независимую проверку канал пройдёт только на будущих колониальных волнах.</div>
-    <p><b>Погодный слой (фаза 2):</b> итоговый индекс <b>R = max(M, C, Z) × MW × MB × BP</b> — максимальный из трёх каналов умножается на погоду, фон и граничное давление. MW = 0.70 + 0.45·W + 0.25·P — погода может усилить риск до +40% или ослабить до −30%. <b>W — форсаж движений</b> = 0.6·A + 0.4·F: A — аномалия холода (средняя за 7 дней против нормы той же даты 2015–2024; −8°C и холоднее — максимум), F — доля суток с минусом за 14 дней (прошедшие + прогнозные; прокси ледостава и концентрации птицы на полыньях). <b>P — персистентность</b> = clamp(1 − (T+5)/40): H5N1 в холодной воде живёт недели, в тёплой — дни:</p>
+    <p><b>Погодный слой (фаза 2):</b> итоговый индекс <b>R = max(M, C, Z) × MW × MB × BP × WD</b> — максимальный из трёх каналов умножается на погоду, фон, граничное давление и ветер. MW = 0.70 + 0.45·W + 0.25·P — погода может усилить риск до +40% или ослабить до −30%. <b>W — форсаж движений</b> = 0.6·A + 0.4·F: A — аномалия холода (средняя за 7 дней против нормы той же даты 2015–2024; −8°C и холоднее — максимум), F — доля суток с минусом за 14 дней (прошедшие + прогнозные; прокси ледостава и концентрации птицы на полыньях). <b>P — персистентность</b> = clamp(1 − (T+5)/40): H5N1 в холодной воде живёт недели, в тёплой — дни:</p>
     <svg viewBox="0 0 220 92" style="max-width:340px;width:100%;height:auto;display:block;margin:6px 0 10px" role="img" aria-label="Кривая персистентности P(T)">
       <line x1="10" y1="77" x2="210" y2="77" stroke="#2c3543" stroke-width="1"/>
       <line x1="10" y1="7" x2="10" y2="77" stroke="#2c3543" stroke-width="1"/>
@@ -306,13 +356,16 @@
     <p>Погода — Open-Meteo (архив + прогноз), 4 точки на флайвей, пересчёт — GitHub Actions ежедневно; W и P — прозрачные эвристики, а не калиброванная эпидемиология. Детальный погодный мониторинг тех же точек — в <a href="https://shray77.github.io/vet-meteo/">vet-meteo</a>.</p>
     <p><b>Фон заносов (фаза 3):</b> <b>B</b> — свежие события ВПГП вверх по флайвею из WOAH WAHIS (публичный API официальных уведомлений — тот же источник, что скрейпит <a href="https://shray77.github.io/vet-heatmap/">ВетКарта</a>). Каждое событие весит по свежести последнего рапорта (≤14 дней — 1.0, ≤30 — 0.6, ≤60 — 0.3); страны коридора — полный вес, смежные — 0.4; сумма нормируется сатурацией на 10 условных единицах. Множитель <b>MB = 0.85 + 0.30·B</b> — до +15% при активной эпизоотии в коридоре и до −15% при тихом фоне. Если WAHIS недоступен, B нейтрален (1.00) — индекс остаётся миграционно-погодным.</p>
     <p><b>Входящее давление (фаза 4, v2.1):</b> <b>BP</b> — вспышки ВПГП в странах, <i>граничащих с РФ</i> внутри коридора флайвея. WAHIS не отдаёт координат событий, поэтому «радиус 200 км» заменён странами-граничниками — сознательное упрощение: активная вспышка в граничной стране — самостоятельный механизм заноса через сухопутную/морскую границу и общий водоём. Окно резче, чем у фона B — 21 день, вес по свежести (≤7 дней — 1.0, ≤14 — 0.8, ≤21 — 0.5), вес границы по значимости сегмента для водоплавающих (1.0 — протяжённая: Казахстан, Китай, Финляндия, Украина…; 0.5 — короткая: Польша, Грузия, Норвегия…). Формула <b>BP = 1.00 + 0.20·(1 − exp(−raw/4))</b> — только усиливает (тихая граница не ослабляет базовый риск), максимум +20%. BP не валидирован бэктестом (исторический срез WAHIS недоступен задним числом) и в бэктесте не участвует; частичное пересечение с MB по смежным странам сознательно — близость к границе РФ считается отдельным фактором.</p>
-    <p>С v2.1 активны все компоненты: <b>три канала</b> (транзит M, колонии C, зимовки Z), <b>W</b> (погодный форсаж), <b>P</b> (персистентность), <b>B</b> (фон заносов) и <b>BP</b> (входящее давление с границ); живые множители применяются к текущей неделе, узловая детализация — 16 точек со своим MW. Дальше — уточнение календаря недельной абундантностью eBird Status &amp; Trends и GPS-треками Movebank и калибровка коэффициентов по ретроспективе; структура модели не меняется.</p>
+    <p><b>Ветровой занос (фаза 5, v2.2):</b> <b>WD</b> — атмосферный перенос в сторону России у границ со странами-граничниками. WAHIS координат не отдаёт, поэтому геометрия строится на <b>45 опорных точках границы</b> (data/points_border.json: страна, координата, inward-азимут «внутрь РФ»): Open-Meteo отдаёт погодовой ветер за прошедшие 72 ч одним batch-запросом. Для каждой точки считается <b>wind_score</b> — доля часов, когда скорость ≥ 4 м/с и направление переноса (метеоветер + 180°) попадает в сектор ±60° от inward. Ключевая физика: <b>вклад дают только страны с активной вспышкой</b> (≤21 день, из BP-событий WAHIS): вклад = свежесть вспышки × вес границы × wind_score её сегментов — без вспышки ветер бесполезен. Формула <b>WD = 1.00 + 0.15·(1 − exp(−wd_raw/2))</b> — только усиливает, максимум +15%. WD — самый срочный фактор модели (окно 72 ч против 21 дня у BP), не валидирован бэктестом; если Open-Meteo недоступен — нейтрален (1.00).</p>
+    <p>С v2.2 активны все компоненты: <b>три канала</b> (транзит M, колонии C, зимовки Z), <b>W</b> (погодный форсаж), <b>P</b> (персистентность), <b>B</b> (фон заносов), <b>BP</b> (входящее давление с границ) и <b>WD</b> (ветровой перенос, 72 ч); живые множители применяются к текущей неделе, узловая детализация — 16 точек со своим MW. Дальше — уточнение календаря недельной абундантностью eBird Status &amp; Trends и GPS-треками Movebank и калибровка коэффициентов по ретроспективе; структура модели не меняется. Поиграть с формулой можно в <a href="#sim-panel">симуляторе</a>.</p>
     <h2 style="margin-top:18px">Мини-FAQ</h2>
     <dl class="faq">
       <dt>Чем это отличается от ВетКарты (vet-heatmap)?</dt>
       <dd><a href="https://shray77.github.io/vet-heatmap/">ВетКарта</a> — детальная ретроспектива и текущие вспышки по РФ (тот же источник WAHIS): что уже случилось. VetFlu — проактивный индекс: в какие недели и на каких миграционных путях окно заноса открывается или закрывается. Инструменты дополняют друг друга.</dd>
       <dt>Откуда данные?</dt>
       <dd>Календарь каналов — экспертная параметризация по орнитологическим сводкам; погода — Open-Meteo (архив 2015–2024 + прогноз, без ключей; детальный погодный мониторинг — <a href="https://shray77.github.io/vet-meteo/">vet-meteo</a>); вспышки — публичный API WOAH WAHIS. Всё пересобирается ежедневно в GitHub Actions.</dd>
+      <dt>Что такое «ветровой занос» (WD)?</dt>
+      <dd>Это срочный фактор (окно 72 ч): если в стране-граничнике есть активная вспышка ВПГП, модель смотрит ветер на опорных точках границы — дул ли перенос в сторону России (≥ 4 м/с, в секторе ±60° «внутрь РФ»). Доля «постановочных» часов × свежесть вспышки × вес границы даёт вклад в WD = 1.00–1.15. Без вспышки у соседа ветер не считается вовсе — перенос бесполезен, если вирус не там. Данные — Open-Meteo, тот же безключевой источник, что и погодный слой.</dd>
       <dt>Что такое «входящее давление» (BP)?</dt>
       <dd>Это свежие вспышки ВПГП в странах, граничащих с Россией внутри коридора флайвея (Казахстан, Китай, Финляндия, Украина и др.). WAHIS не публикует координаты в списке событий, поэтому вместо «радиуса 200 км» считаются страны-граничники — окно 21 день, сатурация, максимум +20% к индексу. BP только усиливает: тихая граница не снижает базовый риск. Частичное пересечение с фоном B — сознательное: близость к границе РФ — отдельный механизм заноса.</dd>
       <dt>Почему возможны промахи?</dt>
@@ -322,15 +375,37 @@
     </dl>
   </article>
 
+  <article class="doc" id="phenology">
+    <h2>Фенологическая сверка <span class="phase-badge p1">eBird S&amp;T / Movebank — что даёт что</span></h2>
+    <p>Окна каналов — экспертная параметризация, и её нужно сверять с крупными орнитодатасетами. Честный статус того, что уже работает, а что требует доступа:</p>
+    <table class="spec">
+      <tr><th>источник</th><th>что даёт</th><th>статус в модели</th></tr>
+      <tr><td class="nm"><b>Экспертные фенокалендари</b></td><td>окна/пики 8 групп видов × 4 флайвея (флайвеи BirdLife/Wetlands International, региональные фенокалендари России)</td><td><b>активна</b> — основа каналов M/C/Z</td></tr>
+      <tr><td class="nm"><b>eBird Status &amp; Trends</b></td><td>недельная абундантность видов-маркеров (кряква, лебеди, нырковые) по неделям года — могла бы уточнять пики ±1–2 недели</td><td>ручная сверка; живая интеграция требует ключа eBird API — в дорожной карте</td></tr>
+      <tr><td class="nm"><b>Movebank</b></td><td>GPS-треки миграции отдельных особей — проверка геометрии коридоров и тайминга</td><td>качественная проверка; автоматизации нет (лицензии отдельных наборов данных)</td></tr>
+    </table>
+    <p>Появление живой абундантности уточнит форму кривых, но не изменит структуру формулы — модель заложена под это (каналы независимы, множители коммутативны). Пока структура остаётся экспертной, все допущения перечислены в методологии, а промахи фиксируются в бэктесте.</p>
+  </article>
+
   <article class="doc" id="roadmap">
-    <h2>Дорожная карта <span class="phase-badge p1">v2.0 · каналы риска готовы</span></h2>
+    <h2>Дорожная карта <span class="phase-badge p1">v2.2 · ветер на границах</span></h2>
     <ul>
-      <li><b>Фаза 1 (готова):</b> календарь пролёта, индекс M, витрина с картой и скраббером недель. Пересчёт — статический, параметризация уточняется по справочникам.</li>
-      <li><b>Фаза 2 (готова):</b> множители W и P подключены — аномалии холода против норм 2015–2024, ледостав (доля суток с минусом за 14 дней), персистентность по средней температуре. Источник — Open-Meteo, та же безключевая API, что под капотом <a href="https://shray77.github.io/vet-meteo/">vet-meteo</a>, но точки по всем флайвеям РФ (вет-метео детализирован на Ростовскую область). Пересчёт — GitHub Actions ежедневно. Холодный октябрь сгоняет птицу югом раньше и дольше держит вирус в водоёмах.</li>
-      <li><b>Фаза 3 (готова):</b> множитель B подключён — свежие события ВПГП по коридорам флайвеев из WOAH WAHIS, обновление ежедневно вместе с погодой; ретроспектива по волнам 2020–2023 встроена в «Проверку глазами». Индекс с полным разложением публикуется в <a href="./data/model.json">model.json</a> для других сервисов экосистемы.</li>
-      <li><b>v2.1 «входящее давление» (готово):</b> множитель BP — вспышки ВПГП в странах-граничниках РФ по коридорам (окно 21 день, сатурация exp, диапазон 1.00–1.20, только усиление); BP выведен в карточки, узлы и панель вспышек; формула R = max(M, C, Z) × MW × MB × BP; бэктест не задет (BP не участвует задним числом — честная оговорка в методологии).</li>
-      <li><b>v2.0 «каналы риска» (готово):</b> транзит дополнен колониальным (гнездовые скопления, пик н28) и зимовочным (трапеция ноябрь–март с заворотом через год) каналами — R = max(M, C, Z) × MW × MB; узловая детализация — свой погодный множитель на каждом из 16 узлов; история R с спарклайнами и RSS-лентой смен фазы; OG-картинка; API-секция.</li>
-      <li><b>Дальше:</b> уточнение календаря недельной абундантностью eBird Status &amp; Trends и GPS-треками Movebank (структура модели не меняется), калибровка коэффициентов по ретроспективе, независимая проверка колониального канала на будущих волнах.</li>
+      <li><b>Фазы 1–3 (готовы):</b> календарь пролёта + погода W/P + фон заносов B; ретроспектива 2020–2023 встроена в «Проверку глазами». Индекс с полным разложением публикуется в <a href="./data/model.json">model.json</a> для других сервисов экосистемы.</li>
+      <li><b>v2.1 «входящее давление» (готово):</b> множитель BP — вспышки ВПГП в странах-граничниках РФ по коридорам (окно 21 день, сатурация exp, диапазон 1.00–1.20, только усиление); BP выведен в карточки, узлы и панель вспышек; бэктест не задет (BP не участвует задним числом — честная оговорка в методологии).</li>
+      <li><b>v2.2 «ветровой занос» (готово):</b> множитель WD (1.00–1.15) — Open-Meteo погодовой ветер за 72 ч на 45 опорных точках границы РФ; вклад дают только страны с активной вспышкой у границы, перенос «в сторону РФ» ≥ 4 м/с в секторе ±60°; R = max(M, C, Z) × MW × MB × BP × WD. Плюс витринное: симулятор «что если», график истории R, фенологическая сверка, changelog, Telegram-алерты (пороги 45/75) и API /v1/vetflu/risk на vet-api.</li>
+      <li><b>Дальше:</b> живая абундантность eBird Status &amp; Trends (нужен ключ) и GPS-треки Movebank; калибровка BP/WD по будущим волнам (независимая проверка — только время); накопление истории R (спарклайны/график раскрываются сами).</li>
+    </ul>
+  </article>
+
+  <article class="doc" id="changelog">
+    <h2>Версии модели <span class="phase-badge p1">changelog</span></h2>
+    <ul class="cl-list">
+      <li><span class="cl-v">v1.0</span><span class="cl-d">2026-10-10</span><span>Фаза 1: миграционный календарь 8 групп видов × 4 флайвея, индекс M (0–100), витрина с картой, скраббером недель и методологией.</span></li>
+      <li><span class="cl-v">v1.1</span><span class="cl-d">2026-10-10</span><span>Фаза 2: погодный слой W/P (Open-Meteo, 16 метеоточек, нормы 2015–2024) — R = M × MW; ежедневная пересборка в Actions.</span></li>
+      <li><span class="cl-v">v1.2</span><span class="cl-d">2026-10-10</span><span>Фаза 3: фон заносов B из WOAH WAHIS — R = M × MW × MB; бэктест волн 2020–2023 (осень 4/4, лето 2021 — честный промах транзита).</span></li>
+      <li><span class="cl-v">v2.0</span><span class="cl-d">2026-10-10</span><span>«Каналы риска»: колониальный C (гауссиана пика н28) и зимовочный Z (трапеция с заворотом через год) — R = max(M, C, Z) × MW × MB; узловая детализация 16 точек, история R + спарклайны, RSS-лента, OG-картинка. Промах 2021 закрыт колониальным каналом — пост-хок, с честной оговоркой.</span></li>
+      <li><span class="cl-v">v2.1</span><span class="cl-d">2026-10-11</span><span>«Входящее давление»: BP = 1.00–1.20 по вспышкам в странах-граничниках РФ (WAHIS, окно 21 день, сатурация exp, только усиление); BP в карточках/узлах/панели вспышек; фикс feed.xml (перенос в корень репо). R = … × BP.</span></li>
+      <li><span class="cl-v">v2.2</span><span class="cl-d">2026-10-11</span><span>«Ветровой занос»: WD = 1.00–1.15 — ветер 72 ч (Open-Meteo) на 45 опорных точках границы; вклад только от стран с активными вспышками. R = … × BP × WD. Плюс: симулятор «что если», график истории R, фенологическая сверка, changelog, Telegram-алерты (пороги 45/75), API /v1/vetflu/risk.</span></li>
     </ul>
   </article>
 
@@ -351,9 +426,10 @@
     <h2>API — забирайте данные <span class="phase-badge p1">JSON + RSS · CORS: *</span></h2>
     <p>Весь результат расчёта публикуется статикой и отдаётся GitHub Pages с заголовком <b>Access-Control-Allow-Origin: *</b> — можно фетчить из любого браузера/скрипта без ключей и бэкенда.</p>
     <ul>
-      <li><b><a href="./data/model.json">data/model.json</a></b> — главный документ: <code>version</code>, <code>generated_at</code>, <code>series</code> (по флайвеям: 52 недели × {w, m, c, z, chan, ph, seas, top}, на текущей неделе + r/mw/mb/bp/sat), <code>nodes</code> (16 узлов: share, anomaly_c, frost14, w, p, mw, colony, wintering, r), <code>history</code> (последние 90 дней R с разложением m/c/z/chan/mw/mb/bp), <code>backtest</code> (волны 2020–2023 × каналы), <code>weather</code> (Open-Meteo по флайвеям и точкам), <code>outbreaks</code> (WAHIS: b/mb/bp, события), <code>channels</code> (параметры каналов).</li>
+      <li><b><a href="./data/model.json">data/model.json</a></b> — главный документ: <code>version</code>, <code>generated_at</code>, <code>series</code> (по флайвеям: 52 недели × {w, m, c, z, chan, ph, seas, top}, на текущей неделе + r/mw/mb/bp/wd/sat), <code>nodes</code> (16 узлов: share, anomaly_c, frost14, w, p, mw, colony, wintering, r), <code>history</code> (последние 90 дней R с разложением m/c/z/chan/mw/mb/bp/wd), <code>backtest</code> (волны 2020–2023 × каналы), <code>weather</code> (Open-Meteo по флайвеям и точкам), <code>outbreaks</code> (WAHIS: b/mb/bp, события), <code>wind</code> (ветровой слой v2.2), <code>alert</code> (уровень для алертов), <code>channels</code> (параметры каналов).</li>
       <li><b><a href="./feed.xml">feed.xml</a></b> — RSS 2.0 «VetFlu — окна риска ВПГП»: смены фазы риска (ph_r) любого флайвея между соседними днями + стартовое состояние, последние 20 событий.</li>
-      <li><b><a href="./data/outbreaks_live.json">data/outbreaks_live.json</a></b> — сырой срез WAHIS за 60 дней; <b><a href="./data/weather.json">data/weather.json</a></b> — срез Open-Meteo.</li>
+      <li><b><a href="./data/outbreaks_live.json">data/outbreaks_live.json</a></b> — сырой срез WAHIS за 60 дней; <b><a href="./data/weather.json">data/weather.json</a></b> — срез Open-Meteo; <b><a href="./data/wind_live.json">data/wind_live.json</a></b> — ветровой срез по границе (wind_score всех 45 точек); <b><a href="./data/points_border.json">data/points_border.json</a></b> — опорные точки границы.</li>
+      <li><b>vet-api (edge):</b> <code>https://vet-api.shray77.workers.dev/v1/vetflu/risk?flyway=ea&amp;nodes=1</code> — сокращённый JSON текущего риска (edge-кэш 10 мин, CORS) — удобно для чужих ботов и дашбордов без полного model.json.</li>
     </ul>
     <p style="font:12.5px var(--mono);background:var(--surface2);border:1px solid var(--border);border-radius:10px;padding:12px 14px;overflow-x:auto;white-space:pre;color:var(--muted)"># текущая неделя и разложение R по Восточно-Атлантическому флайвею
 curl -s https://shray77.github.io/vetflu-site/data/model.json | jq '.series.ea.weeks[] | select(.r != null)'
@@ -370,7 +446,7 @@ curl -s https://shray77.github.io/vetflu-site/feed.xml | head</p>
 <footer>
   <div class="wrap foot">
     <span class="legal">информационный сервис · не ветеринарный совет · прогноз ознакомительный · <a href="./terms.html">условия и дисклеймер</a></span>
-    <span>v2.0 «каналы риска» · транзит / колонии / зимовки · <a href="./feed.xml">RSS-лента</a> · <a href="./og-image.png">OG</a></span>
+    <span>v2.2 «ветровой занос» · транзит / колонии / зимовки / границы / ветер · <a href="./feed.xml">RSS-лента</a> · <a href="#changelog">changelog</a> · <a href="./og-image.png">OG</a></span>
     <span>данные: <a href="./data/model.json">model.json</a> · <a href="./data/outbreaks_live.json">outbreaks_live.json</a> · календарь — экспертная параметризация · погода — Open-Meteo · вспышки — WOAH WAHIS (ежедневно)</span>
     <a href="https://shray77.github.io/vet-meteo/">метео-данные →</a>
     <a href="https://github.com/shray77/vetflu-site">репозиторий</a>
@@ -423,6 +499,7 @@ function mColor(m) {
 function specName(id) { const s = M.species.find(x => x.id === id); return s ? s.label : id; }
 function wj(fwId) { return M.weather && M.weather.per_flyway[fwId]; }
 function obj(fwId) { return M.outbreaks && M.outbreaks.available && M.outbreaks.per_flyway[fwId] ? M.outbreaks.per_flyway[fwId] : null; }
+function wdf(fwId) { return M.wind && M.wind.per_flyway && M.wind.per_flyway[fwId] ? M.wind.per_flyway[fwId] : null; } // v2.2: {wd, wd_raw, contributing}
 function isNow() { return week === CURW; }
 function disp(fwId, s) { return (isNow() && s.r != null) ? s.r : s.m; }
 // v2.0: спарклайн истории R (inline SVG из model.history; скрыт если записей < 5)
@@ -470,6 +547,9 @@ function drawMap() {
       const bits = [`max(M${s.m}, C${s.c}, Z${s.z})`];
       if (wj(fw.id)) bits.push(`погода ${wj(fw.id).mw}`);
       if (ob) bits.push(`фон ${ob.mb.toFixed(2)}`);
+      if (ob && ob.bp != null && ob.bp !== 1) bits.push(`границы ${ob.bp.toFixed(2)}`);
+      const wf = wdf(fw.id);
+      if (wf && wf.wd != null && wf.wd !== 1) bits.push(`ветер ${wf.wd.toFixed(2)}`);
       head = `R = ${v} <span style="color:#93a0b4">(${bits.join(" × ")} · канал: ${esc(chanName(s.chan))})</span>`;
     } else head = `ведущий канал: ${esc(chanName(s.chan))} = ${chanMax(s)} <span style="color:#93a0b4">(M${s.m} · C${s.c} · Z${s.z})</span>`;
     lines[fw.id] = paths.map(p => L.polyline(p, {
@@ -490,7 +570,7 @@ function drawMap() {
       const val = live ? n.r : chanMax(wkRow);
       const badge = (n.colony ? " 🪺" : "") + (n.wintering ? " ❄️" : "");
       const body = live
-        ? `R узла = <b style="color:${mColor(n.r)}">${n.r}</b><br><span style="color:#93a0b4">${esc(chanName(n.chan))} ${n.chan_value} × MW<sub>узла</sub> ${n.mw} × MB ${n.mb} × BP ${n.bp ?? 1}${n.anomaly_c != null ? ` · аномалия ${n.anomaly_c > 0 ? "+" : ""}${n.anomaly_c}°C` : ""}</span>`
+        ? `R узла = <b style="color:${mColor(n.r)}">${n.r}</b><br><span style="color:#93a0b4">${esc(chanName(n.chan))} ${n.chan_value} × MW<sub>узла</sub> ${n.mw} × MB ${n.mb} × BP ${n.bp ?? 1} × WD ${n.wd ?? 1}${n.anomaly_c != null ? ` · аномалия ${n.anomaly_c > 0 ? "+" : ""}${n.anomaly_c}°C` : ""}</span>`
         : `<span style="color:#93a0b4">${esc(chanName(wkRow.chan))} ${chanMax(wkRow)} — статика канала (R узла — только на «сегодня»)</span>`;
       L.circleMarker([n.lat, n.lon], { radius: 4 + 7 * (val / 100), color: "#e8ecf3", weight: 1.2, fillColor: mColor(val), fillOpacity: .85 })
         .bindPopup(`<b>${esc(n.name)}${badge}</b><br><span style="color:#93a0b4">${esc(fw ? fw.label : fwid)} · узел · share ${Math.round(n.share * 100)}%</span><br>${body}`)
@@ -511,7 +591,7 @@ function drawStats() {
   const f = (d) => d.getUTCDate() + " " + MONTHS[d.getUTCMonth()];
   document.getElementById("stats").innerHTML =
     `<div class="stat"><b style="color:var(--accent)">${week}</b><span>неделя года · ${f(a)} — ${f(b)}</span></div>` +
-    `<div class="stat"><b style="color:${mColor(top.v)}">${top.v}</b><span>${isNow() && (M.weather || M.outbreaks) ? "макс R сейчас (max каналов × MW × MB × BP) — " : "макс M сейчас — "}${esc(top.f.label)}</span></div>` +
+    `<div class="stat"><b style="color:${mColor(top.v)}">${top.v}</b><span>${isNow() && (M.weather || M.outbreaks) ? "макс R сейчас (max каналов × MW × MB × BP × WD) — " : "макс M сейчас — "}${esc(top.f.label)}</span></div>` +
     `<div class="stat"><b style="color:${hot ? "var(--red)" : "var(--text)"}">${hot}</b><span>флайвеев в окне высокого риска (≥75)</span></div>` +
     `<div class="stat"><b style="font-size:15px;padding-top:6px">${esc(peaks)}</b><span>пики осеннего пролёта (неделя)</span></div>`;
 }
@@ -522,6 +602,7 @@ function drawFlyways() {
     const v = disp(fw.id, s);
     const w = wj(fw.id);
     const ob = obj(fw.id);
+    const wfl = wdf(fw.id); // v2.2: ветровой перенос флайвея (нужен и в factors, и в decomp)
     const now = isNow();
     const win = M.series[fw.id].weeks.filter(x => x.m >= 60 && x.seas.startsWith("осенний"));
     const winTxt = win.length ? `осеннее окно (M≥60): н${win[0].w}–н${win[win.length - 1].w}` : "осеннее окно M≥60: нет";
@@ -533,12 +614,17 @@ function drawFlyways() {
              `<span class="factor on" title="персистентность при средней T ${w.tmean7_c}°C (7 дней)">P ✓ · ${w.p}</span>`
            : `<span class="factor" title="нет свежих погодных данных">W</span><span class="factor">P</span>`) +
         (ob ? `<span class="factor on" title="фон заносов WAHIS (60 дн): ${ob.ev30} событий за 30 дн · B=${ob.b} (сатурация 10)">B ✓ · ${ob.ev30} всп./30д</span>`
-            : `<span class="factor" title="нет свежих данных WAHIS — B нейтрален">B</span>`)
-      : `<span class="factor on">M ✓</span><span class="factor">W</span><span class="factor">P</span><span class="factor">B</span>`;
+            : `<span class="factor" title="нет свежих данных WAHIS — B нейтрален">B</span>`) +
+        (ob ? `<span class="factor on" title="входящее давление: вспышки в странах-граничниках (21 дн): ${(ob.bp_countries || []).join(", ") || "тихо"}">BP ✓ · ${ob.bp ? ob.bp.toFixed(2) : "1.00"}×</span>`
+            : `<span class="factor" title="нет свежих данных WAHIS — BP нейтрален">BP</span>`) +
+        (wfl ? `<span class="factor on" title="ветровой перенос 72 ч (Open-Meteo): wd_raw=${wfl.wd_raw ?? 0} · вклад: ${(wfl.contributing || []).map((x) => `${x.country} ${x.ws}`).join(", ") || "нет"}">WD ✓ · ${wfl.wd != null ? wfl.wd.toFixed(2) : "1.00"}×</span>`
+            : `<span class="factor" title="нет свежих данных ветра — WD нейтрален">WD</span>`)
+      : `<span class="factor on">M ✓</span><span class="factor">W</span><span class="factor">P</span><span class="factor">B</span><span class="factor">BP</span><span class="factor">WD</span>`;
     const decomp = [`max(M${s.m}, C${s.c}, Z${s.z})`];
     if (w) decomp.push(`MW ${w.mw}`);
     if (ob) decomp.push(`MB ${ob.mb.toFixed(2)}`);
     if (ob && ob.bp != null && ob.bp !== 1) decomp.push(`BP ${ob.bp.toFixed(2)}`);
+    if (wfl && wfl.wd != null && wfl.wd !== 1) decomp.push(`WD ${wfl.wd.toFixed(2)}`);
     const sub = now && s.r != null
       ? `сейчас: ${decomp.join(" × ")} = R ${s.r}${s.sat ? " ⚠ сатурация" : ""}${s.ph_r !== s.ph ? " · " + s.ph_r : ""}`
       : (M.weather || M.outbreaks ? "живые множители — к текущей неделе (кнопка «сегодня»)" : "нет свежих live-данных — статические каналы");
@@ -633,12 +719,19 @@ function drawOutbreaks() {
     const ev = (p.top || []).slice(0, 4).map(e =>
       `<span>${esc(e.date)} · ${esc(e.c)}${e.sub ? " · " + esc(e.sub) : ""}</span>`).join("");
     const bpC = p.bp_countries || [];
+    const wf = wdf(fw.id);
+    const windTxt = wf
+      ? (wf.contributing && wf.contributing.length
+          ? `ветер 72ч: WD <b>${wf.wd.toFixed(2)}×</b> (wd_raw ${wf.wd_raw}) · попутный перенос: ${wf.contributing.map((x) => `${esc(x.country)} ws=${x.ws}`).join(", ")}`
+          : `ветер 72ч: WD ${wf.wd.toFixed(2)}× — вспышки есть, но попутного переноса «в РФ» нет`)
+      : "ветер: данных нет (WD нейтрален)";
     return `<div class="ob-row" style="border-left:3px solid ${fw.color}">
       <div><div class="ob-nm" style="color:${fw.color}">${esc(fw.short)}</div>
         <div class="ob-bar"><i style="width:${Math.round(b * 100)}%;background:${bColor(b)}"></i></div>
         <div class="ob-meta">B ${b.toFixed(2)} → MB ${mb.toFixed(2)}× · BP ${bp.toFixed(2)}×</div></div>
       <div><div class="ob-meta">событий ВПГП в коридоре: ${p.ev14 ?? 0} за 14 дн · ${p.ev30 ?? 0} за 30 дн · ${p.ev60 ?? 0} за 60 дн · активных ${p.ongoing ?? 0}</div>
         <div class="ob-meta">границы РФ (21 дн): ${bpC.length ? esc(bpC.join(", ")) + ` · BP-давление <b>${bp.toFixed(2)}×</b>` : "<b>тихо</b> — BP нейтрален (1.00)"}</div>
+        <div class="ob-meta">${windTxt}</div>
         <div class="ob-ev">${ev || "<span>свежих событий в коридоре нет</span>"}</div></div>
     </div>`;
   }).join("") +
@@ -705,11 +798,96 @@ function drawBacktest() {
     `<tr><th>волна</th><th>флайвей</th><th>неделя</th><th>каналы (ретро)</th><th>ведущий канал</th></tr>` + rows;
 }
 
+// v2.2: большой график истории R по 4 флайвеям (данные — model.history, спарклайны-младший брат)
+function drawHistory() {
+  const el = document.getElementById("hist-chart");
+  const recs = (M.history || []).filter(h => h.per_flyway && M.flyways.some(f => h.per_flyway[f.id] && h.per_flyway[f.id].r != null));
+  if (recs.length < 2) {
+    el.innerHTML = `<p class="sub" style="margin:0">История наполняется: ${recs.length} запись(ей). График появится с двумя и более днями наблюдений — дальше будет расти сам (кап 180 дней в model.json, на витрине — 90).</p>`;
+    return;
+  }
+  const W = 320, H = 118, L = 4, R = 4, T = 8, B = 18;
+  const x = (i) => L + (i / (recs.length - 1)) * (W - L - R);
+  const y = (v) => T + (1 - v / 100) * (H - T - B);
+  let svg = `<svg viewBox="0 0 ${W} ${H}" preserveAspectRatio="none" role="img" aria-label="История R по флайвеям за ${recs.length} дней">`;
+  svg += `<line x1="0" y1="${y(45)}" x2="${W}" y2="${y(45)}" stroke="#2c3543" stroke-width=".6" stroke-dasharray="3 3"/>`;
+  svg += `<line x1="0" y1="${y(75)}" x2="${W}" y2="${y(75)}" stroke="#2c3543" stroke-width=".6" stroke-dasharray="3 3"/>`;
+  svg += `<text x="${W - 2}" y="${y(75) - 2}" fill="#5d6a7d" font-size="7" text-anchor="end" font-family="monospace">75 — высок. риск</text>`;
+  svg += `<text x="${W - 2}" y="${y(45) - 2}" fill="#5d6a7d" font-size="7" text-anchor="end" font-family="monospace">45 — пролёт</text>`;
+  for (const f of M.flyways) {
+    const pts = recs.map((h, i) => { const v = h.per_flyway[f.id].r; return v == null ? null : `${x(i).toFixed(1)},${y(v).toFixed(1)}`; }).filter(Boolean);
+    if (pts.length > 1) svg += `<polyline points="${pts.join(" ")}" fill="none" stroke="${f.color}" stroke-width="1.7" vector-effect="non-scaling-stroke"/>`;
+    const last = recs[recs.length - 1].per_flyway[f.id].r;
+    if (last != null) svg += `<circle cx="${x(recs.length - 1).toFixed(1)}" cy="${y(last).toFixed(1)}" r="2" fill="${f.color}"/>`;
+  }
+  svg += `</svg>`;
+  el.innerHTML = svg + `<div class="hist-legend">${M.flyways.map(f => `<span><i style="background:${f.color}"></i>${esc(f.short)}</span>`).join("")}<span class="dim">пунктир — пороги 45/75 · ${esc(recs[0].date)} — ${esc(recs[recs.length - 1].date)} · ${recs.length} дн</span></div>`;
+}
+
+// v2.2: симулятор «что если» — формула v2.2 вживую, старт с текущих значений модели
+const SIM_MAP = { "sim_m": "sim_m_o", "sim_c": "sim_c_o", "sim_z": "sim_z_o", "sim_w": "sim_w_o", "sim_p": "sim_p_o", "sim_b": "sim_b_o", "sim_bpr": "sim_bpr_o", "sim_wdr": "sim_wdr_o" };
+let simFw = null;
+function simRead() {
+  const v = {};
+  for (const id of Object.keys(SIM_MAP)) v[id] = +document.getElementById(id).value;
+  return v;
+}
+function simCalc() {
+  const v = simRead();
+  const maxChan = Math.max(v.sim_m, v.sim_c, v.sim_z);
+  const chan = v.sim_m >= v.sim_c && v.sim_m >= v.sim_z ? "транзит" : v.sim_c >= v.sim_z ? "колонии" : "зимовки";
+  const mw = Math.round((0.70 + 0.45 * (v.sim_w / 100) + 0.25 * v.sim_p) * 1000) / 1000;
+  const mb = Math.round((0.85 + 0.30 * v.sim_b) * 1000) / 1000;
+  const bp = Math.round((1 + 0.20 * (1 - Math.exp(-v.sim_bpr / 4))) * 1000) / 1000;
+  const wd = Math.round((1 + 0.15 * (1 - Math.exp(-v.sim_wdr / 2))) * 1000) / 1000;
+  const raw = maxChan * mw * mb * bp * wd;
+  const r = Math.round(Math.min(100, Math.max(0, raw)));
+  for (const [id, out] of Object.entries(SIM_MAP)) {
+    const el = document.getElementById(out);
+    el.textContent = (id === "sim_m" || id === "sim_c" || id === "sim_z") ? String(v[id])
+      : id === "sim_w" ? v[id] + "%"
+      : (id === "sim_p" || id === "sim_b") ? (+v[id]).toFixed(2)
+      : (+v[id]).toFixed(1);
+  }
+  const sat = raw > 100 ? ' · <span style="color:var(--orange)">⚠ сатурация: сырой ' + raw.toFixed(1) + ' клампится в 100</span>' : "";
+  document.getElementById("sim-out").innerHTML =
+    `<div class="big" style="color:${mColor(r)}">${r}</div>` +
+    `<div class="decomp">R = max(${v.sim_m}, ${v.sim_c}, ${v.sim_z}) · канал: <b>${chan}</b><br>` +
+    `MW ${mw.toFixed(2)} × MB ${mb.toFixed(2)} × BP ${bp.toFixed(2)} × WD ${wd.toFixed(2)}${sat}</div>` +
+    `<div class="decomp" style="margin-top:6px">пороги: ${r >= 75 ? "<b style='color:var(--red)'>≥75 — окно высокого риска</b>" : r >= 45 ? "45–74 — активный пролёт" : r >= 15 ? "15–44 — умеренное движение" : "<15 — фон"}</div>`;
+}
+function simInit(fwId) {
+  simFw = fwId;
+  const s = M.series[fwId].weeks[CURW - 1];
+  const w = wj(fwId), ob = obj(fwId), wf = wdf(fwId);
+  const set = (id, val) => { document.getElementById(id).value = val; };
+  set("sim_m", s.m); set("sim_c", s.c); set("sim_z", s.z);
+  if (w) {
+    const A = Math.min(1, Math.max(0, -(w.anomaly_c ?? 0) / 8));
+    set("sim_w", Math.round((0.6 * A + 0.4 * (w.frost14 ?? 0)) * 100));
+    set("sim_p", Math.min(1, Math.max(0.25, w.p ?? 1)));
+  } else { set("sim_w", 0); set("sim_p", 1); } // нет свежей погоды — MW нейтрален (1.00)
+  if (ob) { set("sim_b", ob.b ?? 0); set("sim_bpr", ob.bp && ob.bp > 1 ? Math.min(8, -4 * Math.log(1 - (ob.bp - 1) / 0.20)) : 0); }
+  else { set("sim_b", 0); set("sim_bpr", 0); }
+  if (wf && wf.wd > 1) set("sim_wdr", Math.min(6, -2 * Math.log(1 - (wf.wd - 1) / 0.15))); else set("sim_wdr", 0);
+  document.querySelectorAll("#sim-chips .chip-btn").forEach(b => b.classList.toggle("active", b.dataset.v === fwId));
+  simCalc();
+}
+function simBoot() {
+  const el = document.getElementById("sim-chips");
+  if (!el || !M.flyways) return;
+  el.innerHTML = M.flyways.map(fw => `<button class="chip-btn ${fw.id === simFw ? "active" : ""}" data-v="${fw.id}">${esc(fw.short)}</button>`).join("");
+  el.querySelectorAll(".chip-btn").forEach(b => b.onclick = () => simInit(b.dataset.v));
+  for (const id of Object.keys(SIM_MAP)) document.getElementById(id).oninput = simCalc;
+  if (!simFw) simFw = M.flyways[0].id;
+  simInit(simFw);
+}
+
 async function boot() {
   try {
     M = await (await fetch("./data/model.json", { cache: "no-store" })).json();
     CURW = isoWeek(new Date());
-    renderMeta(); drawSpecTable(); drawOutbreaks(); drawBacktest(); drawNodes(); drawForecast(); setWeek(CURW);
+    renderMeta(); drawSpecTable(); drawOutbreaks(); drawBacktest(); drawNodes(); drawForecast(); drawHistory(); simBoot(); setWeek(CURW);
   } catch (e) {
     document.getElementById("meta").innerHTML = `<span class="dot"></span><span>model.json недоступен</span>`;
   }

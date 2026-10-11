@@ -19,6 +19,8 @@ jobs:
         run: node scripts/fetch_weather.mjs
       - name: Fetch outbreaks (WOAH WAHIS)
         run: node scripts/fetch_outbreaks.mjs
+      - name: Fetch wind (Open-Meteo, border points)
+        run: node scripts/fetch_wind.mjs
       - name: Rebuild model
         run: node scripts/build_model.mjs
       - name: OG image (PIL)
@@ -26,9 +28,14 @@ jobs:
         run: |
           python3 -m pip install --quiet pillow
           python3 scripts/make_og.py
+      - name: Telegram alert (on level change)
+        env:
+          TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+          TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
+        run: node scripts/send_alert.mjs
       - name: Commit data
         run: |
           git config user.name "vetflu-bot"
           git config user.email "actions@users.noreply.github.com"
-          git add data/model.json data/weather.json data/climate_cache.json data/outbreaks_live.json data/history.json feed.xml og-image.png
+          git add data/model.json data/weather.json data/climate_cache.json data/outbreaks_live.json data/wind_live.json data/history.json data/alert_state.json feed.xml og-image.png
           git diff --cached --quiet || (git commit -m "daily update $(date -u +%F)" && git push)

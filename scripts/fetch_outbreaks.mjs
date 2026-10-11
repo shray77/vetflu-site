@@ -18,6 +18,8 @@
  * Окно 21 день (резче, чем 60-дневный фон B), вес по свежести: ≤7 дней — 1.0, ≤14 — 0.8, ≤21 — 0.5.
  * BP_fw = 1.00 + 0.20 * (1 − exp(−raw/4)) — диапазон 1.00–1.20 (BP только усиливает:
  * тихая граница не ослабляет базовый риск). BP не задним числом: в бэктесте не участвует.
+ * v2.2: таблица BORDER и веса свежести вынесены в scripts/borders.mjs — общий модуль
+ * с build_model.mjs, где тот же вес стран участвует в ветровом переносе WD.
  *
  * Graceful degradation: WAHIS недоступен → если свежий outbreaks_live.json (≤3 дней) есть,
  * он сохраняется как есть; иначе пишется {available:false} и build_model считает B нейтральным (1.00).
@@ -36,21 +38,8 @@ const WINDOW_DAYS = 60;
 const SATURATION = 10;
 const ADJACENT_W = 0.4;
 
-// ---- v2.1: входящее давление BP — страны-граничники РФ по флайвеям ----
-// ключ — подстрока названия страны в WAHIS (case-insensitive), значение — вес границы
-// (1.0 — протяжённая/значимая для флайвея, 0.5 — короткий сегмент).
-// Кореи не включены: в WAHIS неоднозначные названия («Korea, Rep.» / DPRK), обе не граничат
-// по значимым для водоплавающих сегментам; Япония не граничит с РФ вовсе.
-const BORDER = {
-  ea:  { label: "Балтика/Северо-Запад", countries: { finland: 1.0, estonia: 1.0, latvia: 1.0, lithuania: 0.5, poland: 0.5, belarus: 1.0, ukraine: 1.0, norway: 0.5 } },
-  bsm: { label: "Юг ЕТР/Кавказ/Каспий", countries: { ukraine: 1.0, georgia: 0.5, azerbaijan: 1.0, kazakhstan: 1.0 } },
-  ca:  { label: "Казахстан/Алтай",      countries: { kazakhstan: 1.0, mongolia: 1.0, china: 0.5 } },
-  eaa: { label: "ДВ/Китай/Монголия",    countries: { china: 1.0, mongolia: 1.0 } },
-};
-const BP_WINDOW_DAYS = 21;
-const BP_SATURATION = 4; // P = 1 − exp(−raw/4)
-const BP_GAIN = 0.20;    // BP = 1.00 + 0.20·P
-const bpRecency = (days) => (days <= 7 ? 1.0 : days <= 14 ? 0.8 : 0.5);
+// ---- v2.1: приграничные страны/веса — общий модуль scripts/borders.mjs (с v2.2 делится с WD) ----
+import { BORDER, BP_WINDOW_DAYS, BP_SATURATION, BP_GAIN, bpRecency } from "./borders.mjs";
 
 const FLYWAYS = ["ea", "bsm", "ca", "eaa"];
 
