@@ -20,6 +20,12 @@
  * тихая граница не ослабляет базовый риск). BP не задним числом: в бэктесте не участвует.
  * v2.2: таблица BORDER и веса свежести вынесены в scripts/borders.mjs — общий модуль
  * с build_model.mjs, где тот же вес стран участвует в ветровом переносе WD.
+ * v2.3: дистанционная модель B — координаты страны (центроид/опорные точки,
+ * data/country_coords.json; крупные страны набором) → гаверсинус-дистанция до каждого
+ * из 16 узлов (data/points.json) → экспоненциальное затухание exp(-d/1000 км). Вес события
+ * в B флайвея = recency × класс коридора × max(prox узлов); у каждого узла — свой b/mb
+ * (geo.per_node) для узловых R. Без координат страны — плоский вес (старое поведение).
+ * BP не трогается — граничная близость остаётся страновым фактором по дизайну (И1).
  *
  * Graceful degradation: WAHIS недоступен → если свежий outbreaks_live.json (≤3 дней) есть,
  * он сохраняется как есть; иначе пишется {available:false} и build_model считает B нейтральным (1.00).
@@ -40,6 +46,36 @@ const ADJACENT_W = 0.4;
 
 // ---- v2.1: приграничные страны/веса — общий модуль scripts/borders.mjs (с v2.2 делится с WD) ----
 import { BORDER, BP_WINDOW_DAYS, BP_SATURATION, BP_GAIN, bpRecency } from "./borders.mjs";
+
+// ---- v2.3: география — точки узлов + опорные координаты стран (И1) ----
+const PTS = JSON.parse(readFileSync(join(ROOT, "data", "points.json"), "utf8"));
+let GEO = null;
+try { GEO = JSON.parse(readFileSync(join(ROOT, "data", "country_coords.json"), "utf8")); } catch { GEO = null; }
+const DECAY_KM = (GEO && GEO.decay_km) || 1000;
+
+function haversineKm(lat1, lon1, lat2, lon2) {
+  const R = 6371;
+  const p = Math.PI / 180;
+  const dLat = (lat2 - lat1) * p;
+  const dLon = (lon2 - lon1) * p;
+  const a = Math.sin(dLat / 2) ** 2 + Math.cos(lat1 * p) * Math.cos(lat2 * p) * Math.sin(dLon / 2) ** 2;
+  return 2 * R * Math.asin(Math.sqrt(a));
+}
+function countryAnchors(name) {
+  if (!GEO || !GEO.countries) return null;
+  const n = String(name || "").toLowerCase();
+  for (const [key, pts] of Object.entries(GEO.countries)) if (n.includes(key)) return pts;
+  return null;
+}
+function distToNodeKm(anchors, node) {
+  let best = Infinity;
+  for (const [la, lo] of anchors) {
+    const d = haversineKm(la, lo, node.lat, node.lon);
+    if (d < best) best = d;
+  }
+  return best;
+}
+const proxKm = (d) => Math.exp(-d / DECAY_KM);
 
 const FLYWAYS = ["ea", "bsm", "ca", "eaa"];
 
@@ -119,9 +155,17 @@ async function fetchAll() {
 function aggregate(events) {
   const now = Date.now();
   const per = {};
-  for (const fid of FLYWAYS) per[fid] = { raw: 0, ev14: 0, ev30: 0, ev60: 0, ongoing: 0, fresh: [], bp_raw: 0, bp_events: [] };
+  const nodesByFw = {};
+  for (const fid of FLYWAYS) {
+    per[fid] = { raw: 0, ev14: 0, ev30: 0, ev60: 0, ongoing: 0, fresh: [], bp_raw: 0, bp_events: [] };
+    nodesByFw[fid] = {};
+    for (const n of (PTS.flyways[fid] || [])) {
+      nodesByFw[fid][n.id] = { id: n.id, name: n.name, lat: n.lat, lon: n.lon, raw: 0, min_km: null, ev: 0 };
+    }
+  }
   const countries = new Set();
   let hpai60 = 0;
+  let geoEvents = 0, flatEvents = 0;
 
   for (const e of events) {
     if (!isHpai(e)) continue;
@@ -134,8 +178,27 @@ function aggregate(events) {
     if (!hits.length) continue;
     countries.add(String(e.country));
     const w = recencyW(days);
+    const anchors = countryAnchors(e.country);
     for (const { fid, w: cw } of hits) {
-      per[fid].raw += w * cw;
+      // v2.3: дистанционный вес события в B флайвея = max по узлам exp(-d/1000)
+      // (без координат страны — 1.0, старое плоское поведение); BP не трогается
+      const nodes = Object.values(nodesByFw[fid]);
+      let proxMax = 1.0;
+      if (anchors && nodes.length) {
+        proxMax = 0;
+        for (const n of nodes) {
+          const d = distToNodeKm(anchors, n);
+          const pr = proxKm(d);
+          if (pr > proxMax) proxMax = pr;
+          nodesByFw[fid][n.id].raw += w * cw * pr;
+          if (nodesByFw[fid][n.id].min_km == null || d < nodesByFw[fid][n.id].min_km) nodesByFw[fid][n.id].min_km = Math.round(d);
+          if (pr >= 0.05) nodesByFw[fid][n.id].ev++;
+        }
+        geoEvents++;
+      } else {
+        flatEvents++;
+      }
+      per[fid].raw += w * cw * proxMax;
       if (days <= 14) per[fid].ev14++;
       if (days <= 30) per[fid].ev30++;
       if (days <= 60) per[fid].ev60++;
@@ -147,6 +210,7 @@ function aggregate(events) {
         st: e.eventStatus === "On-going" ? "ongoing" : "resolved",
         id: e.eventId,
         days,
+        d_km: anchors && nodes.length ? Math.round(Math.min(...nodes.map((n) => distToNodeKm(anchors, n)))) : null,
       });
     }
     // ---- v2.1: вклад в BP (только страны-граничники, окно 21 день) ----
@@ -170,6 +234,19 @@ function aggregate(events) {
     const bp = 1 + BP_GAIN * bpP;
     p.fresh.sort((a, x) => a.days - x.days);
     p.bp_events.sort((a, x) => a.days - x.days);
+    // v2.3: пер-узловая дистанционная статистика
+    const perNode = {};
+    for (const n of Object.values(nodesByFw[fid])) {
+      const bn = clamp(n.raw / SATURATION, 0, 1);
+      perNode[n.id] = {
+        id: n.id,
+        b: Math.round(bn * 1000) / 1000,
+        mb: Math.round((0.85 + 0.3 * bn) * 1000) / 1000,
+        raw: Math.round(n.raw * 100) / 100,
+        min_km: n.min_km,
+        events: n.ev,
+      };
+    }
     out[fid] = {
       b: Math.round(b * 1000) / 1000,
       mb: Math.round((0.85 + 0.3 * b) * 1000) / 1000,
@@ -184,6 +261,14 @@ function aggregate(events) {
       bp_raw: Math.round(p.bp_raw * 100) / 100,
       bp_events: p.bp_events.slice(0, 5),
       bp_countries: [...new Set(p.bp_events.map((x) => x.c))].sort(),
+      // v2.3: гаверсинус-география по узлам
+      geo: {
+        method: "haversine: страна (опорные точки) → 16 узлов points.json",
+        decay_km: DECAY_KM,
+        events_geo: geoEvents,
+        events_flat: flatEvents,
+        per_node: perNode,
+      },
     };
   }
   return { per: out, hpai60, countries: [...countries].sort() };
@@ -201,8 +286,8 @@ async function main() {
       source: "WOAH WAHIS — публичный API wahis.woah.org (официальные уведомления)",
       window_days: WINDOW_DAYS,
       saturation: SATURATION,
-      formula: "B = clamp(raw/10, 0, 1); MB = 0.85 + 0.30*B; raw = Σ w_recency × (1.0 страна коридора | 0.4 смежная); BP = 1.00 + 0.20·(1−exp(−bp_raw/4)) — страны-граничники РФ, окно 21 день",
-      weights: { recency: { d14: 1.0, d30: 0.6, d60: 0.3 }, adjacent_country: ADJACENT_W, bp: { window_days: BP_WINDOW_DAYS, recency: { d7: 1.0, d14: 0.8, d21: 0.5 }, saturation: BP_SATURATION, gain: BP_GAIN, borders: BORDER } },
+      formula: "B = clamp(raw/10, 0, 1); MB = 0.85 + 0.30*B; raw = Σ w_recency × (1.0 страна коридора | 0.4 смежная) × exp(-d_гаверсинус/1000км) — d до ближайшего узла флайвея (без координат — exp=1); BP = 1.00 + 0.20·(1−exp(−bp_raw/4)) — страны-граничники РФ, окно 21 день",
+      weights: { recency: { d14: 1.0, d30: 0.6, d60: 0.3 }, adjacent_country: ADJACENT_W, distance: { decay_km: DECAY_KM, method: "haversine, опорные точки стран → 16 узлов" }, bp: { window_days: BP_WINDOW_DAYS, recency: { d7: 1.0, d14: 0.8, d21: 0.5 }, saturation: BP_SATURATION, gain: BP_GAIN, borders: BORDER } },
       total_events: events.length,
       hpai_events_60d: hpai60,
       countries_60d: countries,
@@ -211,7 +296,8 @@ async function main() {
     writeFileSync(OUT, JSON.stringify(out));
     for (const fid of FLYWAYS) {
       const p = per[fid];
-      console.log(`${fid}: B=${p.b} MB=${p.mb} · BP=${p.bp} (raw ${p.bp_raw}, ${p.bp_countries.join(", ") || "тихо"}) · ${p.ev30} соб./30д, ${p.ev60}/60д, ongoing ${p.ongoing}`);
+      const near = Object.values(p.geo.per_node).filter((n) => n.min_km != null).sort((a, x) => a.min_km - x.min_km)[0];
+      console.log(`${fid}: B=${p.b} MB=${p.mb} · BP=${p.bp} (raw ${p.bp_raw}, ${p.bp_countries.join(", ") || "тихо"}) · ${p.ev30} соб./30д, ${p.ev60}/60д, ongoing ${p.ongoing}${near ? ` · ближе всего ${near.min_km} км (${near.id})` : ""}`);
     }
     console.log(`OK data/outbreaks_live.json (HPAI 60д: ${hpai60}, страны: ${countries.length})`);
   } catch (err) {

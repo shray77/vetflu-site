@@ -24,6 +24,10 @@
  * (16 узлов points.json — свой MW по метеоточке), история R (history.json),
  * бэктест v2 по трём каналам, RSS-лента (feed.xml) смен фазы риска.
  * v2.1: BP (границы, фаза 4); v2.2: WD (ветровой занос, фаза 5) + приграничные веса в borders.mjs.
+ * v2.3 «riskgeo»: И1 — дистанционный фон B (гаверсинус от опорных точек стран до 16 узлов,
+ * exp(-d/1000 км), пер-узловые MB — см. fetch_outbreaks.mjs); И2 — транзитный канал M смешан
+ * с eBird S&T-фенологией (вес model.ebird_alpha, генерация build_ebird_phenology.mjs);
+ * И6 — changelog модели в model.json (data/changelog.json). Бэктест перепроверяется при сборке.
  */
 import { readFileSync, writeFileSync, statSync, existsSync } from "node:fs";
 import { fileURLToPath } from "node:url";
@@ -106,6 +110,26 @@ if (existsSync(WNDF)) {
 // v2.1/v2.2: приграничные страны/веса — общий модуль с fetch_outbreaks.mjs
 import { bpRecency, borderWeight } from "./borders.mjs";
 
+// И2 (v2.3): eBird S&T фенология — недельные кривые относительной абундантности
+// (детерминированная оцифровка публичных барчартов, см. build_ebird_phenology.mjs)
+const EF = join(ROOT, "data", "ebird_phenology.json");
+let ebird = null;
+if (existsSync(EF)) {
+  try { ebird = JSON.parse(readFileSync(EF, "utf8")); } catch (e) { console.warn("ebird_phenology.json unreadable:", e.message); }
+}
+// вес смешивания гауссианной базы и eBird-кривой (0 = чистая база, 1 = чистый eBird)
+const EBIRD_ALPHA = (M.model && M.model.ebird_alpha != null) ? M.model.ebird_alpha : 0.3;
+
+// И6 (v2.3): changelog модели — история версий в model.json
+const CF = join(ROOT, "data", "changelog.json");
+let CHANGELOG = [];
+if (existsSync(CF)) {
+  try {
+    const c = JSON.parse(readFileSync(CF, "utf8"));
+    if (Array.isArray(c)) CHANGELOG = c;
+  } catch (e) { console.warn("changelog.json unreadable:", e.message); }
+}
+
 // ---- v2.2: ветровой перенос WD по флайвею ----
 // Вклад дают только страны с активной (≤21 дн) вспышкой из WAHIS bp_events:
 // вклад события = bpRecency(days) × borderWeight(fw, страна) × ws (max wind_score
@@ -183,14 +207,14 @@ const out = {
   source: "data/migration.json v" + M.version,
   model: {
     ...M.model,
-    formula: "R = max(M, C, Z) × MW × MB × BP × WD — три канала риска в шкале 0–100: M транзит (миграционный календарь 8 групп видов), C колонии = 100·c_fw·gauss(w, peak=28, σ) (гнездовые скопления, июнь–август), Z зимовки = 100·z_fw·trap(w) (трапеция ноябрь–март с заворотом через Новый год); MW = 0.70 + 0.45*W + 0.25*P; MB = 0.85 + 0.30*B; BP = 1.00 + 0.20·(1−exp(−bp_raw/4)) — входящее давление от стран-граничников РФ (окно 21 день); WD = 1.00 + 0.15·(1−exp(−wd_raw/2)) — ветровой перенос в сторону РФ при активных вспышках у границы (72 ч, Open-Meteo, опорные точки границы); chan = argmax(M,C,Z)",
+    formula: "R = max(M, C, Z) × MW × MB × BP × WD — три канала риска в шкале 0–100: M транзит (миграционный календарь 8 групп видов, с v2.3 смешан с eBird S&T-кривой абундантности, α=" + ((M.model && M.model.ebird_alpha != null) ? M.model.ebird_alpha : 0.3) + "), C колонии = 100·c_fw·gauss(w, peak=28, σ) (гнездовые скопления, июнь–август), Z зимовки = 100·z_fw·trap(w) (трапеция ноябрь–март с заворотом через Новый год); MW = 0.70 + 0.45*W + 0.25*P; MB = 0.85 + 0.30*B, B — сатурация свежих ВПГП-событий вверх по коридору (WOAH WAHIS) с гаверсинус-затуханием exp(-d/1000км) до 16 узлов (v2.3); BP = 1.00 + 0.20·(1−exp(−bp_raw/4)) — входящее давление от стран-граничников РФ (окно 21 день); WD = 1.00 + 0.15·(1−exp(−wd_raw/2)) — ветровой перенос в сторону РФ при активных вспышках у границы (72 ч, Open-Meteo, опорные точки границы); chan = argmax(M,C,Z)",
     factors: {
-      M: "транзитный канал — миграционная фаза пролёта",
+      M: "транзитный канал — миграционная фаза пролёта (с v2.3: бленд экспертной базы и eBird S&T-фенологии)",
       C: "колониальный канал — гнездовые скопления (июнь–август)",
       Z: "зимовочный канал — массовые зимовки (ноябрь–март)",
       W: weather ? "погодный форсаж (аномалия холода, ледостав) — активна (Open-Meteo)" : "погодный форсаж — нет свежих данных, MW = 1.00",
       P: weather ? "персистентность вируса (температура) — активна" : "персистентность — нет свежих данных",
-      B: outbreaks ? "фон заносов (WOAH WAHIS) — активна" : "фон заносов (WOAH WAHIS) — нет свежих данных, MB = 1.00",
+      B: outbreaks ? "фон заносов (WOAH WAHIS, с v2.3 — гаверсинус-затухание до узлов, e-fold 1000 км) — активна" : "фон заносов (WOAH WAHIS) — нет свежих данных, MB = 1.00",
       BP: outbreaks ? "входящее давление (WOAH WAHIS, страны-граничники РФ, окно 21 дн) — активен" : "входящее давление — нет свежих данных, BP = 1.00",
       WD: wind ? "ветровой перенос в сторону РФ (Open-Meteo, 72 ч, опорные точки границы) — активен" : "ветровой перенос — нет свежих данных, WD = 1.00",
     },
@@ -202,6 +226,8 @@ const out = {
   },
   flyways: M.flyways,
   species: M.species,
+  ebird: ebird ? { alpha: EBIRD_ALPHA, updated: ebird.updated, source: ebird.source, data: "data/ebird_phenology.json" } : null,
+  changelog: CHANGELOG,
   weather: weather ? { updated: weather.updated, source: weather.source, formulas: weather.formulas, per_flyway: weather.per_flyway } : null,
   wind: wind ? {
     available: true,
@@ -245,10 +271,41 @@ for (const fw of M.flyways) {
     raw.push({ sum, autumnPart, springPart, contributions });
   }
   const maxRaw = Math.max(...raw.map((r) => r.sum));
+  // И2: максимум eBird-суммы для нормировки
+  let maxRawE = 1e-9;
+  if (ebird && ebird.species) {
+    for (let wi = 0; wi < WEEKS; wi++) {
+      let sumE = 0;
+      for (const g of M.species) {
+        const wfw = g.fw[fw.id] ?? 0;
+        if (!wfw) continue;
+        const cur = ebird.species[g.id] && ebird.species[g.id][fw.id];
+        if (!cur) continue;
+        sumE += g.weight * wfw * cur[wi];
+      }
+      if (sumE > maxRawE) maxRawE = sumE;
+    }
+  }
   const col = COLONIAL[fw.id], win = WINTERING[fw.id];
   const weeks = raw.map((r, i) => {
     const w = i + 1;
-    const m = Math.round(clamp((96 * r.sum) / maxRaw + M.model.resident_base, 0, 100));
+    // И2: eBird-кривая транзита — та же нормировка на максимум флайвея,
+    // затем линейный бленд с гауссианной базой (вес EBIRD_ALPHA)
+    const mGauss = (96 * r.sum) / maxRaw + M.model.resident_base;
+    let m = mGauss;
+    if (ebird && ebird.species) {
+      let sumE = 0;
+      for (const g of M.species) {
+        const wfw = g.fw[fw.id] ?? 0;
+        if (!wfw) continue;
+        const cur = ebird.species[g.id] && ebird.species[g.id][fw.id];
+        if (!cur) continue;
+        sumE += g.weight * wfw * cur[i];
+      }
+      const mEbird = (96 * sumE) / maxRawE + M.model.resident_base;
+      m = (1 - EBIRD_ALPHA) * mGauss + EBIRD_ALPHA * mEbird;
+    }
+    m = Math.round(clamp(m, 0, 100));
     const c = Math.round(100 * col.c * gauss(w, 28, col.sigma));
     const z = Math.round(100 * win.z * winterTrap(w, win));
     const chan = m >= c && m >= z ? "transit" : c >= z ? "colonies" : "wintering";
@@ -308,8 +365,13 @@ for (const fw of M.flyways) {
   const wd = row.wd ?? 1; // v2.2
   const live = weather && weather.per_flyway[fw.id];
   const wpoints = live ? weather.per_flyway[fw.id].points || [] : [];
+  // И1 (v2.3): пер-узловый фон заносов (гаверсинус) — узловой MB вместо плоского флайвеевого
+  const obGeo = outbreaks && outbreaks.per_flyway[fw.id] && outbreaks.per_flyway[fw.id].geo
+    ? outbreaks.per_flyway[fw.id].geo : null;
   const nodes = (PTS.flyways[fw.id] || []).map((p) => {
     const wp = wpoints.find((x) => x.id === p.id) || null;
+    const gn = obGeo && obGeo.per_node ? obGeo.per_node[p.id] : null;
+    const mbGeo = gn ? gn.mb : mb;
     let w = null, pv = null, mwN = null, r = null;
     if (wp) {
       const A = clamp(-wp.anomaly_c / 8, 0, 1);
@@ -317,13 +379,14 @@ for (const fw of M.flyways) {
       w = r2(clamp(0.6 * A + 0.4 * F, 0, 1));
       pv = r2(clamp(1 - (wp.obs7_c + 5) / 40, 0.25, 1));
       mwN = r2(0.70 + 0.45 * w + 0.25 * pv);
-      r = Math.round(clamp(row[CHAN_KEY[row.chan]] * mwN * mb * bp * wd, 0, 100));
+      r = Math.round(clamp(row[CHAN_KEY[row.chan]] * mwN * mbGeo * bp * wd, 0, 100));
     }
     return {
       id: p.id, name: p.name, lat: p.lat, lon: p.lon, share: p.share,
       anomaly_c: wp ? wp.anomaly_c : null, frost14: wp ? wp.frost14 : null,
       w, p: pv, mw: mwN, colony: !!p.colony, wintering: !!p.wintering,
-      chan: row.chan, chan_value: row[CHAN_KEY[row.chan]], mb, bp, wd, r,
+      chan: row.chan, chan_value: row[CHAN_KEY[row.chan]], mb, mb_geo: gn ? gn.mb : null,
+      min_km: gn && gn.min_km != null ? gn.min_km : null, bp, wd, r,
     };
   });
   out.nodes[fw.id] = nodes;

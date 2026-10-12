@@ -1,0 +1,93 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>VetFlu — риск сейчас</title>
+<meta name="description" content="Компактный виджет текущего индекса риска заноса ВПГП по 4 флайвеям России: R = max(транзит, колонии, зимовки) × погода × фон вспышек. Автообновление каждые 10 минут.">
+<meta property="og:title" content="VetFlu — риск сейчас">
+<meta property="og:description" content="Текущий индекс риска заноса ВПГП по 4 флайвеям РФ — компактная версия витрины VetFlu.">
+<meta property="og:url" content="https://shray77.github.io/vetflu-site/risk/">
+<link rel="canonical" href="https://shray77.github.io/vetflu-site/risk/">
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🦆</text></svg>">
+<style>
+  :root {
+    color-scheme: dark;
+    --bg: #0b0e14; --surface: #12161f; --surface2: #171c27; --border: #1f2530;
+    --text: #e8ecf3; --muted: #93a0b4; --faint: #5d6a7d;
+    --accent: #38bdf8; --red: #f87171; --amber: #fbbf24;
+    --mono: ui-monospace, "Cascadia Code", Consolas, monospace;
+  }
+  * { box-sizing: border-box; }
+  body { background: var(--bg); color: var(--text); font: 15px/1.55 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; margin: 0; padding: 18px 16px 26px; }
+  .hd { display: flex; align-items: baseline; gap: 10px; flex-wrap: wrap; margin-bottom: 12px; }
+  .hd h1 { font-size: 17px; margin: 0; }
+  .hd .up { color: var(--faint); font: 11.5px var(--mono); }
+  .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(215px, 1fr)); gap: 10px; }
+  .fw { background: var(--surface); border: 1px solid var(--border); border-top: 3px solid var(--faint); border-radius: 12px; padding: 12px 14px; }
+  .fw h2 { margin: 0; font-size: 13.5px; font-weight: 600; }
+  .fw .reg { color: var(--muted); font-size: 11.5px; margin: 1px 0 8px; }
+  .r { font-size: 34px; font-weight: 700; font-family: var(--mono); line-height: 1; }
+  .ph { font-size: 12px; border: 1px solid; border-radius: 999px; padding: 1px 9px; display: inline-block; margin-left: 8px; vertical-align: 4px; }
+  .dec { color: var(--muted); font: 11.5px var(--mono); margin-top: 8px; }
+  .chan { margin-top: 6px; font-size: 12px; }
+  .ft { margin-top: 14px; color: var(--faint); font-size: 12px; display: flex; gap: 14px; flex-wrap: wrap; }
+  .ft a { color: var(--muted); text-decoration: none; }
+  .ft a:hover { color: var(--accent); }
+  .err { color: var(--amber); font-size: 13px; }
+</style>
+</head>
+<body>
+<div class="hd">
+  <h1>🦆 VetFlu — риск заноса ВПГП сейчас</h1>
+  <span class="up" id="meta">загрузка…</span>
+</div>
+<div class="grid" id="grid"><span class="err">загрузка model.json…</span></div>
+<div class="ft">
+  <span>автообновление 10 мин · <a href="https://shray77.github.io/vetflu-site/">полная витрина →</a> · <a href="https://shray77.github.io/vetflu-site/data/model.json">model.json →</a></span>
+  <span class="err">ознакомительный индекс — не система раннего предупреждения; решения — по каналам Россельхознадзора (ФСВПС)</span>
+</div>
+<script>
+const ESC = { "&": "&amp;", "<": "&lt;", ">": "&gt;" };
+const esc = (s) => String(s).replace(/[&<>]/g, (c) => ESC[c]);
+const CHAN = { transit: "Транзит", colonies: "Колонии", wintering: "Зимовки" };
+const rColor = (v) => v >= 75 ? "#f87171" : v >= 45 ? "#fbbf24" : v >= 15 ? "#38bdf8" : "#5d6a7d";
+function phase(v) { return v >= 75 ? "окно высокого риска" : v >= 45 ? "активный пролёт" : v >= 15 ? "умеренное движение" : "фон"; }
+async function tick() {
+  try {
+    const M = await (await fetch("../data/model.json", { cache: "no-store" })).json();
+    document.getElementById("meta").textContent =
+      `${M.version} · сборка ${M.generated_at.slice(0, 16).replace("T", " ")} UTC`;
+    const iso = () => {
+      const d = new Date();
+      const t = new Date(Date.UTC(d.getFullYear(), d.getMonth(), d.getDate()));
+      const day = t.getUTCDay() || 7;
+      t.setUTCDate(t.getUTCDate() + 4 - day);
+      const y0 = new Date(Date.UTC(t.getUTCFullYear(), 0, 1));
+      return Math.ceil(((t - y0) / 86400000 + 1) / 7);
+    };
+    const w = Math.min(52, iso());
+    document.getElementById("grid").innerHTML = M.flyways.map((f) => {
+      const s = M.series[f.id].weeks[w - 1];
+      const live = s.r != null;
+      const v = live ? s.r : Math.max(s.m, s.c, s.z);
+      const dec = live
+        ? `max(M${s.m}·C${s.c}·Z${s.z}) × MW ${s.mw} × MB ${s.mb} × BP ${s.bp ?? 1} × WD ${s.wd ?? 1}`
+        : `max(M${s.m}·C${s.c}·Z${s.z}) — без live-множителей`;
+      return `<div class="fw" style="border-top-color:${f.color}">
+        <h2 style="color:${f.color}">${esc(f.label)}</h2>
+        <div class="reg">${esc(f.regions)}</div>
+        <div><span class="r" style="color:${rColor(v)}">${v}</span><span class="ph" style="color:${rColor(v)};border-color:${rColor(v)}">${esc(live && s.ph_r ? s.ph_r : s.ph)}</span></div>
+        <div class="chan" style="color:${f.color}">${esc(CHAN[s.chan] || s.chan)} · неделя ${w}</div>
+        <div class="dec">${esc(dec)}</div>
+      </div>`;
+    }).join("");
+  } catch (e) {
+    document.getElementById("grid").innerHTML = `<span class="err">model.json недоступен (${esc(e.message)}) — повтор через 10 мин</span>`;
+  }
+}
+tick();
+setInterval(tick, 10 * 60 * 1000);
+</script>
+</body>
+</html>

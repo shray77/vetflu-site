@@ -17,8 +17,10 @@ jobs:
           node-version: 20
       - name: Fetch weather (Open-Meteo)
         run: node scripts/fetch_weather.mjs
-      - name: Fetch outbreaks (WOAH WAHIS)
+      - name: Fetch outbreaks (WOAH WAHIS, haversine geo)
         run: node scripts/fetch_outbreaks.mjs
+      - name: Rebuild eBird phenology (deterministic, if migration changed)
+        run: node scripts/build_ebird_phenology.mjs
       - name: Fetch wind (Open-Meteo, border points)
         run: node scripts/fetch_wind.mjs
       - name: Rebuild model
@@ -37,5 +39,5 @@ jobs:
         run: |
           git config user.name "vetflu-bot"
           git config user.email "actions@users.noreply.github.com"
-          git add data/model.json data/weather.json data/climate_cache.json data/outbreaks_live.json data/wind_live.json data/history.json data/alert_state.json feed.xml og-image.png
+          git add data/model.json data/ebird_phenology.json data/weather.json data/climate_cache.json data/outbreaks_live.json data/wind_live.json data/history.json data/alert_state.json feed.xml og-image.png
           git diff --cached --quiet || (git commit -m "daily update $(date -u +%F)" && git push)
