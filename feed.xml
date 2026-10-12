@@ -5,7 +5,7 @@
 <link>https://shray77.github.io/vetflu-site/</link>
 <description>Ежедневный индекс риска заноса высокопатогенного гриппа птиц по 4 флайвеям России: R = max(M, C, Z) × MW × MB. События — смены фазы риска.</description>
 <language>ru</language>
-<lastBuildDate>Sun, 11 Oct 2026 15:44:52 GMT</lastBuildDate>
+<lastBuildDate>Mon, 12 Oct 2026 10:09:33 GMT</lastBuildDate>
 <atom:link href="https://shray77.github.io/vetflu-site/feed.xml" rel="self" type="application/rss+xml" />
 <item>
 <title>Старт наблюдения: В-Атл R100 транзит (окно высокого риска) · Черном. R43 транзит (умеренное движение) · Центр-Аз R61 транзит (активный пролёт) · В-Азия R54 транзит (активный пролёт)</title>
@@ -13,6 +13,27 @@
 <guid isPermaLink="false">vetflu-2026-10-10-1m2s8z5</guid>
 <pubDate>Sat, 10 Oct 2026 12:00:00 GMT</pubDate>
 <description>Начало ежедневной истории индекса R = max(M, C, Z) × MW × MB. В-Атл R100 транзит (окно высокого риска); Черном. R43 транзит (умеренное движение); Центр-Аз R61 транзит (активный пролёт); В-Азия R54 транзит (активный пролёт).</description>
+</item>
+<item>
+<title>Черном.: умеренное движение → активный пролёт · R 59 (транзит)</title>
+<link>https://shray77.github.io/vetflu-site/</link>
+<guid isPermaLink="false">vetflu-2026-10-12-nojpyd</guid>
+<pubDate>Mon, 12 Oct 2026 12:00:00 GMT</pubDate>
+<description>Черноморско-Средиземноморский: фаза риска сменилась с «умеренное движение» на «активный пролёт». Разложение на 2026-10-12: M 79 · C 1 · Z 0 → канал «Транзит», MW 0.82 × MB 0.909 = R 59.</description>
+</item>
+<item>
+<title>Центр-Аз: активный пролёт → окно высокого риска · R 77 (транзит)</title>
+<link>https://shray77.github.io/vetflu-site/</link>
+<guid isPermaLink="false">vetflu-2026-10-12-y77v9g</guid>
+<pubDate>Mon, 12 Oct 2026 12:00:00 GMT</pubDate>
+<description>Центральноазиатский: фаза риска сменилась с «активный пролёт» на «окно высокого риска». Разложение на 2026-10-12: M 96 · C 1 · Z 0 → канал «Транзит», MW 0.94 × MB 0.857 = R 77.</description>
+</item>
+<item>
+<title>В-Азия: активный пролёт → окно высокого риска · R 78 (транзит)</title>
+<link>https://shray77.github.io/vetflu-site/</link>
+<guid isPermaLink="false">vetflu-2026-10-12-8hef1g</guid>
+<pubDate>Mon, 12 Oct 2026 12:00:00 GMT</pubDate>
+<description>Восточноазиатско-Австралазийский: фаза риска сменилась с «активный пролёт» на «окно высокого риска». Разложение на 2026-10-12: M 88 · C 1 · Z 0 → канал «Транзит», MW 0.99 × MB 0.898 = R 78.</description>
 </item>
 </channel>
 </rss>
