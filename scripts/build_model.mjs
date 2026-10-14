@@ -14,7 +14,7 @@
  *     [start→full1 подъём 0→1; full1→full2 плато 1; full2→end спад 1→0]
  *     с заворотом через границу года (дуги окружности 1..52).
  *
- * Итог: R = max(M, C, Z) × MW × MB × BP × WD, где MW = 0.70+0.45W+0.25P (Open-Meteo),
+ * Итог: R = max(M, C, Z) × MW × MB × BP × WD × HG, где MW = 0.70+0.45W+0.25P (Open-Meteo),
  * MB = 0.85+0.30B (WOAH WAHIS), BP = 1.00+0.20·(1−exp(−bp_raw/4)) — страны-граничники,
  * WD = 1.00+0.15·(1−exp(−wd_raw/2)) — ветровой перенос в сторону РФ (v2.2, Open-Meteo 72 ч
  * на опорных точках границы). Живые множители штампуются только на текущую неделю
@@ -28,6 +28,10 @@
  * exp(-d/1000 км), пер-узловые MB — см. fetch_outbreaks.mjs); И2 — транзитный канал M смешан
  * с eBird S&T-фенологией (вес model.ebird_alpha, генерация build_ebird_phenology.mjs);
  * И6 — changelog модели в model.json (data/changelog.json). Бэктест перепроверяется при сборке.
+ * v2.4 «habitat»: И8 — статический гео-фактор среды обитания HG (драйверы Opata et al. 2025:
+ * вода JRC GSW v1.5 + NDVI MOD13Q1 + плотность птицы FAO GLW-4; данные data/habitat.json,
+ * генератор build_habitat.py — климатологии коммитятся, в CI не запускается), пер-флайвей
+ * и пер-узловой, формулы выше и в model.json.formula.
  */
 import { readFileSync, writeFileSync, statSync, existsSync } from "node:fs";
 import { fileURLToPath } from "node:url";
@@ -120,6 +124,59 @@ if (existsSync(EF)) {
 // вес смешивания гауссианной базы и eBird-кривой (0 = чистая база, 1 = чистый eBird)
 const EBIRD_ALPHA = (M.model && M.model.ebird_alpha != null) ? M.model.ebird_alpha : 0.3;
 
+// И8 (v2.4.0-habitat): статический гео-фактор среды обитания HG — драйверы Opata et al. 2025
+// (Sci Rep, doi:10.1038/s41598-025-04624-x: вода, NDVI, плотность птицеводства — в числе главных).
+// Данные — data/habitat.json (генератор scripts/build_habitat.py, климатологии — коммитятся):
+//   вода JRC GSW v1.5 occurrence (%), NDVI MOD13Q1 (месячная климатология 2023–2025),
+//   плотность chickens+ducks FAO GLW-4 (голов/км²).
+// gh = w_w·water_n + w_n·ndvi_n(w) + w_p·poultry_n (сатурационные нормировки 1−exp(−x/sat));
+// HG = clamp(0.92 + 0.20·gh, 0.92, 1.12). Статика: множитель доступен всегда, штампуется вместе с живыми.
+const HABF = join(ROOT, "data", "habitat.json");
+let habitat = null;
+if (existsSync(HABF)) {
+  try {
+    const h = JSON.parse(readFileSync(HABF, "utf8"));
+    if (h.per_flyway && h.formula) habitat = h;
+    else console.warn("habitat.json: нет per_flyway/formula — И8 отключён (HG = 1.00)");
+  } catch (e) { console.warn("habitat.json unreadable:", e.message); }
+}
+const HG_BASE = 0.92, HG_GAIN = 0.20, HG_MIN = 0.92, HG_MAX = 1.12; // держать синхронно с build_habitat.py
+// центр месяца в недельных координатах (≈15-е число месяца, шкала недель ISO 1..52)
+const MONTH_CENTER_WEEKS = [2.7, 6.8, 11.0, 15.2, 19.4, 23.6, 27.8, 32.0, 36.3, 40.5, 44.7, 48.9];
+function ndviAtWeek(mo, w) {
+  if (!Array.isArray(mo) || !mo.length || mo.some((x) => x == null)) return null;
+  const pts = MONTH_CENTER_WEEKS.map((c, i) => [c, mo[i]]);
+  pts.push([MONTH_CENTER_WEEKS[0] + 52, mo[0]]);   // заворот года: январь следующим годом
+  pts.push([MONTH_CENTER_WEEKS[11] - 52, mo[11]]); // и декабрь предыдущим
+  pts.sort((a, b) => a[0] - b[0]);
+  for (let i = 0; i < pts.length - 1; i++) {
+    if (w >= pts[i][0] && w <= pts[i + 1][0]) {
+      const t = (w - pts[i][0]) / (pts[i + 1][0] - pts[i][0]);
+      return pts[i][1] + t * (pts[i + 1][1] - pts[i][1]);
+    }
+  }
+  return mo[0];
+}
+function ghComponents(rec, week) {
+  const f = habitat.formula;
+  const sat = (x, s) => 1 - Math.exp(-Math.max(0, x || 0) / s);
+  const water_n = sat(rec.water_pct, f.water_sat);
+  const ndvi_w = ndviAtWeek(rec.ndvi_monthly, week);
+  if (ndvi_w == null) return null; // без NDVI-климатологии фактор не считаем (частичные данные закрывает генератор)
+  const ndvi_n = sat(ndvi_w, f.ndvi_sat);
+  const poultry_n = sat(rec.poultry_head_km2, f.poultry_sat);
+  const gh = f.w_water * water_n + f.w_ndvi * ndvi_n + f.w_poultry * poultry_n;
+  return { gh, hg: clamp(HG_BASE + HG_GAIN * gh, HG_MIN, HG_MAX), water_n, ndvi_n, poultry_n, ndvi_w };
+}
+function habFw(fwId, week) {
+  return habitat ? ghComponents(habitat.per_flyway[fwId] || {}, week) : null;
+}
+function habNode(fwId, nodeId, week) {
+  if (!habitat) return null;
+  const rec = habitat.per_node[fwId + ":" + nodeId];
+  return ghComponents(rec || habitat.per_flyway[fwId] || {}, week);
+}
+
 // И6 (v2.3): changelog модели — история версий в model.json
 const CF = join(ROOT, "data", "changelog.json");
 let CHANGELOG = [];
@@ -207,7 +264,7 @@ const out = {
   source: "data/migration.json v" + M.version,
   model: {
     ...M.model,
-    formula: "R = max(M, C, Z) × MW × MB × BP × WD — три канала риска в шкале 0–100: M транзит (миграционный календарь 8 групп видов, с v2.3 смешан с eBird S&T-кривой абундантности, α=" + ((M.model && M.model.ebird_alpha != null) ? M.model.ebird_alpha : 0.3) + "), C колонии = 100·c_fw·gauss(w, peak=28, σ) (гнездовые скопления, июнь–август), Z зимовки = 100·z_fw·trap(w) (трапеция ноябрь–март с заворотом через Новый год); MW = 0.70 + 0.45*W + 0.25*P; MB = 0.85 + 0.30*B, B — сатурация свежих ВПГП-событий вверх по коридору (WOAH WAHIS) с гаверсинус-затуханием exp(-d/1000км) до 16 узлов (v2.3); BP = 1.00 + 0.20·(1−exp(−bp_raw/4)) — входящее давление от стран-граничников РФ (окно 21 день); WD = 1.00 + 0.15·(1−exp(−wd_raw/2)) — ветровой перенос в сторону РФ при активных вспышках у границы (72 ч, Open-Meteo, опорные точки границы); chan = argmax(M,C,Z)",
+    formula: "R = max(M, C, Z) × MW × MB × BP × WD × HG — три канала риска в шкале 0–100: M транзит (миграционный календарь 8 групп видов, с v2.3 смешан с eBird S&T-кривой абундантности, α=" + ((M.model && M.model.ebird_alpha != null) ? M.model.ebird_alpha : 0.3) + "), C колонии = 100·c_fw·gauss(w, peak=28, σ) (гнездовые скопления, июнь–август), Z зимовки = 100·z_fw·trap(w) (трапеция ноябрь–март с заворотом через Новый год); MW = 0.70 + 0.45*W + 0.25*P; MB = 0.85 + 0.30*B, B — сатурация свежих ВПГП-событий вверх по коридору (WOAH WAHIS) с гаверсинус-затуханием exp(-d/1000км) до 16 узлов (v2.3); BP = 1.00 + 0.20·(1−exp(−bp_raw/4)) — входящее давление от стран-граничников РФ (окно 21 день); WD = 1.00 + 0.15·(1−exp(−wd_raw/2)) — ветровой перенос в сторону РФ при активных вспышках у границы (72 ч, Open-Meteo, опорные точки границы); HG = clamp(0.92 + 0.20·gh, 0.92, 1.12) — статический гео-фактор среды обитания (v2.4, Opata et al. 2025): gh = 0.40·вода_n + 0.30·NDVI_n(w) + 0.30·птица_n, вода = JRC GSW v1.5 occurrence (%), NDVI = MOD13Q1 климатология 2023–2025, птица = chickens+ducks FAO GLW-4 (голов/км²), сатурационные нормировки 1−exp(−x/sat); chan = argmax(M,C,Z)",
     factors: {
       M: "транзитный канал — миграционная фаза пролёта (с v2.3: бленд экспертной базы и eBird S&T-фенологии)",
       C: "колониальный канал — гнездовые скопления (июнь–август)",
@@ -217,6 +274,7 @@ const out = {
       B: outbreaks ? "фон заносов (WOAH WAHIS, с v2.3 — гаверсинус-затухание до узлов, e-fold 1000 км) — активна" : "фон заносов (WOAH WAHIS) — нет свежих данных, MB = 1.00",
       BP: outbreaks ? "входящее давление (WOAH WAHIS, страны-граничники РФ, окно 21 дн) — активен" : "входящее давление — нет свежих данных, BP = 1.00",
       WD: wind ? "ветровой перенос в сторону РФ (Open-Meteo, 72 ч, опорные точки границы) — активен" : "ветровой перенос — нет свежих данных, WD = 1.00",
+      HG: habitat ? "гео-фактор среды обитания (v2.4, статика): вода JRC GSW + NDVI MOD13Q1 + плотность птицы GLW-4 (драйверы Opata et al. 2025)" : "гео-фактор среды обитания — нет data/habitat.json, HG = 1.00",
     },
   },
   channels: {
@@ -227,6 +285,7 @@ const out = {
   flyways: M.flyways,
   species: M.species,
   ebird: ebird ? { alpha: EBIRD_ALPHA, updated: ebird.updated, source: ebird.source, data: "data/ebird_phenology.json" } : null,
+  habitat: habitat ? { version: habitat.version, updated: habitat.updated, sources: habitat.sources, formula: habitat.formula, data: "data/habitat.json" } : null,
   changelog: CHANGELOG,
   weather: weather ? { updated: weather.updated, source: weather.source, formulas: weather.formulas, per_flyway: weather.per_flyway } : null,
   wind: wind ? {
@@ -332,11 +391,13 @@ for (const fw of M.flyways) {
   const bp = obf && obf.bp ? obf.bp : 1; // v2.1: входящее давление (страны-граничники, 21 дн); нет данных → 1.00
   const windF = windFw(fw.id, obf);     // v2.2: ветровой перенос (вспышки у границы × ветер 72 ч); нет данных → 1.00
   const wd = windF.wd;
+  const hab = habFw(fw.id, cw);         // v2.4: гео-фактор среды (статика); нет habitat.json → null (×1)
   if (weather || obf) {
-    const rawMax = Math.max(row.m, row.c, row.z) * mw * mb * bp * wd;
+    const rawMax = Math.max(row.m, row.c, row.z) * mw * mb * bp * wd * (hab ? hab.hg : 1);
     const r = Math.round(clamp(rawMax, 0, 100));
     row.r = r; row.ph_r = phaseLabel(r); row.mw = mw; row.mb = mb; row.bp = bp; row.b = obf ? obf.b : null;
     row.wd = wd; row.wd_raw = windF.wd_raw;
+    row.hg = hab ? Math.round(hab.hg * 1000) / 1000 : null; row.gh = hab ? Math.round(hab.gh * 1000) / 1000 : null;
     row.chan = chanWinner(row); // канал-победитель argmax(M,C,Z)
     row.sat = rawMax > 100; // инфо-флаг сатурации: сырой max > 100 до клампа
   }
@@ -372,6 +433,7 @@ for (const fw of M.flyways) {
     const wp = wpoints.find((x) => x.id === p.id) || null;
     const gn = obGeo && obGeo.per_node ? obGeo.per_node[p.id] : null;
     const mbGeo = gn ? gn.mb : mb;
+    const habN = habNode(fw.id, p.id, cw); // v2.4: узловой гео-фактор (фолбэк — флайвей)
     let w = null, pv = null, mwN = null, r = null;
     if (wp) {
       const A = clamp(-wp.anomaly_c / 8, 0, 1);
@@ -379,7 +441,7 @@ for (const fw of M.flyways) {
       w = r2(clamp(0.6 * A + 0.4 * F, 0, 1));
       pv = r2(clamp(1 - (wp.obs7_c + 5) / 40, 0.25, 1));
       mwN = r2(0.70 + 0.45 * w + 0.25 * pv);
-      r = Math.round(clamp(row[CHAN_KEY[row.chan]] * mwN * mbGeo * bp * wd, 0, 100));
+      r = Math.round(clamp(row[CHAN_KEY[row.chan]] * mwN * mbGeo * bp * wd * (habN ? habN.hg : 1), 0, 100));
     }
     return {
       id: p.id, name: p.name, lat: p.lat, lon: p.lon, share: p.share,
@@ -387,6 +449,10 @@ for (const fw of M.flyways) {
       w, p: pv, mw: mwN, colony: !!p.colony, wintering: !!p.wintering,
       chan: row.chan, chan_value: row[CHAN_KEY[row.chan]], mb, mb_geo: gn ? gn.mb : null,
       min_km: gn && gn.min_km != null ? gn.min_km : null, bp, wd, r,
+      hg: habN ? Math.round(habN.hg * 1000) / 1000 : null, gh: habN ? Math.round(habN.gh * 1000) / 1000 : null,
+      water_n: habN ? Math.round(habN.water_n * 100) / 100 : null,
+      ndvi_n: habN ? Math.round(habN.ndvi_n * 100) / 100 : null,
+      poultry_n: habN ? Math.round(habN.poultry_n * 100) / 100 : null,
     };
   });
   out.nodes[fw.id] = nodes;
@@ -421,7 +487,7 @@ for (const fw of M.flyways) {
   const row = out.series[fw.id].weeks[cw - 1];
   rec.per_flyway[fw.id] = {
     m: row.m, c: row.c, z: row.z, chan: row.chan,
-    mw: row.mw ?? null, mb: row.mb ?? null, bp: row.bp ?? null, wd: row.wd ?? null, r: row.r ?? null,
+    mw: row.mw ?? null, mb: row.mb ?? null, bp: row.bp ?? null, wd: row.wd ?? null, hg: row.hg ?? null, r: row.r ?? null,
   };
 }
 const idx = history.records.findIndex((x) => x.date === today);
@@ -482,7 +548,7 @@ const feedXml =
   `<rss version="2.0" xmlns:atom="http://www.w3.org/2005/Atom">\n<channel>\n` +
   `<title>VetFlu — окна риска ВПГП</title>\n` +
   `<link>${SITE}</link>\n` +
-  `<description>Ежедневный индекс риска заноса высокопатогенного гриппа птиц по 4 флайвеям России: R = max(M, C, Z) × MW × MB. События — смены фазы риска.</description>\n` +
+  `<description>Ежедневный индекс риска заноса высокопатогенного гриппа птиц по 4 флайвеям России: R = max(M, C, Z) × MW × MB × BP × WD × HG. События — смены фазы риска.</description>\n` +
   `<language>ru</language>\n` +
   `<lastBuildDate>${new Date().toUTCString()}</lastBuildDate>\n` +
   `<atom:link href="${SITE}feed.xml" rel="self" type="application/rss+xml" />\n` +
@@ -499,7 +565,7 @@ const kb = (statSync(file).size / 1024).toFixed(1);
 for (const [id, s] of Object.entries(out.series)) {
   const cur = s.weeks[isoWeekNow() - 1];
   const decomp = cur.r != null
-    ? ` R=${cur.r} (max M${cur.m}, C${cur.c}, Z${cur.z} × MW${cur.mw} × MB${cur.mb} × BP${cur.bp ?? 1} × WD${cur.wd ?? 1}) ${CHAN_LABEL[cur.chan]}${cur.sat ? " ⚠сатурация" : ""} — ${cur.ph_r}`
+    ? ` R=${cur.r} (max M${cur.m}, C${cur.c}, Z${cur.z} × MW${cur.mw} × MB${cur.mb} × BP${cur.bp ?? 1} × WD${cur.wd ?? 1} × HG${cur.hg ?? 1}) ${CHAN_LABEL[cur.chan]}${cur.sat ? " ⚠сатурация" : ""} — ${cur.ph_r}`
     : " (live-множителей нет — чистые каналы)";
   console.log(`${id}: peak autumn w${s.peak_autumn_week} (M up to ${s.peak_m}); now w${isoWeekNow()}${decomp} — ${cur.ph}`);
 }

@@ -554,6 +554,7 @@ function drawMap() {
       if (ob && ob.bp != null && ob.bp !== 1) bits.push(`границы ${ob.bp.toFixed(2)}`);
       const wf = wdf(fw.id);
       if (wf && wf.wd != null && wf.wd !== 1) bits.push(`ветер ${wf.wd.toFixed(2)}`);
+      if (s.hg != null) bits.push(`среда ${s.hg.toFixed(2)}`);
       head = `R = ${v} <span style="color:#93a0b4">(${bits.join(" × ")} · канал: ${esc(chanName(s.chan))})</span>`;
     } else head = `ведущий канал: ${esc(chanName(s.chan))} = ${chanMax(s)} <span style="color:#93a0b4">(M${s.m} · C${s.c} · Z${s.z})</span>`;
     lines[fw.id] = paths.map(p => L.polyline(p, {
@@ -574,7 +575,7 @@ function drawMap() {
       const val = live ? n.r : chanMax(wkRow);
       const badge = (n.colony ? " 🪺" : "") + (n.wintering ? " ❄️" : "");
       const body = live
-        ? `R узла = <b style="color:${mColor(n.r)}">${n.r}</b><br><span style="color:#93a0b4">${esc(chanName(n.chan))} ${n.chan_value} × MW<sub>узла</sub> ${n.mw} × MB ${n.mb} × BP ${n.bp ?? 1} × WD ${n.wd ?? 1}${n.anomaly_c != null ? ` · аномалия ${n.anomaly_c > 0 ? "+" : ""}${n.anomaly_c}°C` : ""}</span>`
+        ? `R узла = <b style="color:${mColor(n.r)}">${n.r}</b><br><span style="color:#93a0b4">${esc(chanName(n.chan))} ${n.chan_value} × MW<sub>узла</sub> ${n.mw} × MB ${n.mb} × BP ${n.bp ?? 1} × WD ${n.wd ?? 1} × HG ${n.hg ?? 1}${n.anomaly_c != null ? ` · аномалия ${n.anomaly_c > 0 ? "+" : ""}${n.anomaly_c}°C` : ""}</span>`
         : `<span style="color:#93a0b4">${esc(chanName(wkRow.chan))} ${chanMax(wkRow)} — статика канала (R узла — только на «сегодня»)</span>`;
       L.circleMarker([n.lat, n.lon], { radius: 4 + 7 * (val / 100), color: "#e8ecf3", weight: 1.2, fillColor: mColor(val), fillOpacity: .85 })
         .bindPopup(`<b>${esc(n.name)}${badge}</b><br><span style="color:#93a0b4">${esc(fw ? fw.label : fwid)} · узел · share ${Math.round(n.share * 100)}%</span><br>${body}`)
@@ -622,13 +623,16 @@ function drawFlyways() {
         (ob ? `<span class="factor on" title="входящее давление: вспышки в странах-граничниках (21 дн): ${(ob.bp_countries || []).join(", ") || "тихо"}">BP ✓ · ${ob.bp ? ob.bp.toFixed(2) : "1.00"}×</span>`
             : `<span class="factor" title="нет свежих данных WAHIS — BP нейтрален">BP</span>`) +
         (wfl ? `<span class="factor on" title="ветровой перенос 72 ч (Open-Meteo): wd_raw=${wfl.wd_raw ?? 0} · вклад: ${(wfl.contributing || []).map((x) => `${x.country} ${x.ws}`).join(", ") || "нет"}">WD ✓ · ${wfl.wd != null ? wfl.wd.toFixed(2) : "1.00"}×</span>`
-            : `<span class="factor" title="нет свежих данных ветра — WD нейтрален">WD</span>`)
-      : `<span class="factor on">M ✓</span><span class="factor">W</span><span class="factor">P</span><span class="factor">B</span><span class="factor">BP</span><span class="factor">WD</span>`;
+            : `<span class="factor" title="нет свежих данных ветра — WD нейтрален">WD</span>`) +
+        (s.hg != null ? `<span class="factor on" title="гео-фактор среды обитания (статика, Opata et al. 2025): вода JRC GSW v1.5 · NDVI MOD13Q1 · плотность птицы FAO GLW-4; gh = ${s.gh ?? "—"}">HG ✓ · ${s.hg.toFixed(2)}×</span>`
+                      : `<span class="factor" title="нет data/habitat.json — HG нейтрален">HG</span>`)
+      : `<span class="factor on">M ✓</span><span class="factor">W</span><span class="factor">P</span><span class="factor">B</span><span class="factor">BP</span><span class="factor">WD</span><span class="factor">HG</span>`;
     const decomp = [`max(M${s.m}, C${s.c}, Z${s.z})`];
     if (w) decomp.push(`MW ${w.mw}`);
     if (ob) decomp.push(`MB ${ob.mb.toFixed(2)}`);
     if (ob && ob.bp != null && ob.bp !== 1) decomp.push(`BP ${ob.bp.toFixed(2)}`);
     if (wfl && wfl.wd != null && wfl.wd !== 1) decomp.push(`WD ${wfl.wd.toFixed(2)}`);
+    if (s.hg != null) decomp.push(`HG ${s.hg.toFixed(2)}`);
     const sub = now && s.r != null
       ? `сейчас: ${decomp.join(" × ")} = R ${s.r}${s.sat ? " ⚠ сатурация" : ""}${s.ph_r !== s.ph ? " · " + s.ph_r : ""}`
       : (M.weather || M.outbreaks ? "живые множители — к текущей неделе (кнопка «сегодня»)" : "нет свежих live-данных — статические каналы");

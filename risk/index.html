@@ -72,7 +72,7 @@ async function tick() {
       const live = s.r != null;
       const v = live ? s.r : Math.max(s.m, s.c, s.z);
       const dec = live
-        ? `max(M${s.m}·C${s.c}·Z${s.z}) × MW ${s.mw} × MB ${s.mb} × BP ${s.bp ?? 1} × WD ${s.wd ?? 1}`
+        ? `max(M${s.m}·C${s.c}·Z${s.z}) × MW ${s.mw} × MB ${s.mb} × BP ${s.bp ?? 1} × WD ${s.wd ?? 1} × HG ${s.hg ?? 1}`
         : `max(M${s.m}·C${s.c}·Z${s.z}) — без live-множителей`;
       return `<div class="fw" style="border-top-color:${f.color}">
         <h2 style="color:${f.color}">${esc(f.label)}</h2>
