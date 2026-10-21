@@ -101,6 +101,26 @@ try {
 }
 
 // 3) агрегация по флайвеям
+// v2.6 (И9): сезонные ворота для W — дублируется в build_model.mjs (узловой MW), держать синхронно.
+// Обоснование: Opata et al. 2025 (SHAP): топ-предиктор — минимальная температура осенью
+// (min_temp_q3), критична низкая средняя весной (mean_temp_q2); холодная аномалия концентрирует
+// птиц на незамерзающих участках только в холодный сезон. Сентябрь–апрель — 1.0, лето — 0.5
+// (H5 циркулирует круглогодично с 2022, EFSA), плечи в мае и конце августа.
+function wSeasonGate(week) {
+  if (week >= 36 || week <= 16) return 1;
+  if (week <= 20) return 1 - 0.5 * (week - 16) / 4;   // май: 1.0 → 0.5
+  if (week >= 34) return 0.5 + 0.5 * (week - 33) / 2; // конец августа: 0.5 → 1.0
+  return 0.5;                                          // июнь–август
+}
+function isoWeek(d) {
+  const t = new Date(Date.UTC(d.getFullYear(), d.getMonth(), d.getDate()));
+  const day = t.getUTCDay() || 7;
+  t.setUTCDate(t.getUTCDate() + 4 - day);
+  const y0 = new Date(Date.UTC(t.getUTCFullYear(), 0, 1));
+  return Math.ceil(((t - y0) / 86400000 + 1) / 7);
+}
+const wkNow = isoWeek(new Date());
+const sGate = wSeasonGate(wkNow);
 const per_flyway = {};
 if (current) {
   for (const [fw, pts] of Object.entries(P.flyways)) {
@@ -109,11 +129,13 @@ if (current) {
     const frost = Math.round(mean(rows.map(r => r.frost14)) * 100) / 100;
     const tmean = Math.round(mean(rows.map(r => r.obs7_c)) * 10) / 10;
     const A = clamp(-anomaly / 8, 0, 1);
-    const W = clamp(0.6 * A + 0.4 * frost, 0, 1);
+    const W = clamp(0.6 * A + 0.4 * frost, 0, 1) * sGate; // v2.6: × сезонные ворота
     const Pv = clamp(1 - (tmean + 5) / 40, 0.25, 1);
     per_flyway[fw] = {
       anomaly_c: anomaly, frost14: frost, tmean7_c: tmean,
       w: Math.round(W * 100) / 100,
+      w_gate: Math.round(sGate * 100) / 100,
+      w_week: wkNow,
       p: Math.round(Pv * 100) / 100,
       mw: Math.round((0.70 + 0.45 * W + 0.25 * Pv) * 100) / 100,
       points: rows,
@@ -126,7 +148,7 @@ const out = {
   source: "Open-Meteo: archive 2015–2024 (нормы) + forecast past7/next7",
   current_available: !!current,
   note: errNote,
-  formulas: { A: "clamp(-anomaly/8,0,1)", F: "share(Tmin<0, 14d)", W: "clamp(0.6A+0.4F,0,1)", P: "clamp(1-(T+5)/40,0.25,1)", MW: "0.70+0.45W+0.25P", R: "M*MW" },
+  formulas: { A: "clamp(-anomaly/8,0,1)", F: "share(Tmin<0, 14d)", W: "clamp(0.6A+0.4F,0,1)*wSeasonGate(w)", wSeasonGate: "сен–апр 1.0, май линейно к 0.5, лето 0.5, конец августа линейно к 1.0 (v2.6, Opata 2025: топ-предиктор — холод осенью)", P: "clamp(1-(T+5)/40,0.25,1)", MW: "0.70+0.45W+0.25P", R: "M*MW" },
   per_flyway,
 };
 writeFileSync(join(ROOT, "data", "weather.json"), JSON.stringify(out));
