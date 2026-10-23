@@ -225,18 +225,18 @@
 </head>
 <body>
 <nav class="hub">
-  <a href="https://shray77.github.io/vetdigest-site/">🐾 Дайджест науки</a>
-  <a href="https://shray77.github.io/vetrecall-site/">🚨 Отзывы и вспышки РФ</a>
-  <a href="https://shray77.github.io/biothreat-site/">🌍 Биоугрозы мира</a>
-  <a href="https://shray77.github.io/vet-heatmap/">🗺 ВетКарта</a>
-  <a href="https://shray77.github.io/vetflu-site/" class="on">🦆 Окна риска ВПГП</a>
-  <a href="https://shray77.github.io/rss-core-site/">🛰️ Статус ядра</a>
+  <a href="https://shray77.github.io/vetdigest-site/">Дайджест науки</a>
+  <a href="https://shray77.github.io/vetrecall-site/">Отзывы и вспышки РФ</a>
+  <a href="https://shray77.github.io/biothreat-site/">Биоугрозы мира</a>
+  <a href="https://shray77.github.io/vet-heatmap/">ВетКарта</a>
+  <a href="https://shray77.github.io/vetflu-site/" class="on">Окна риска ВПГП</a>
+  <a href="https://shray77.github.io/rss-core-site/">Статус ядра</a>
 </nav>
 
 <header class="top">
   <div class="wrap topbar">
     <div class="brand">
-      <div class="logo">🦆</div>
+      <div class="logo"><svg viewBox="0 0 24 24" width="28" height="28" fill="none" stroke="#38bdf8" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 16c0-3 2-5 5-5 1 0 1.6-1.2 1.8-2.4.1-.9.9-1.6 1.8-1.6h.9c.6 0 1-.5 1-1 0-.6-.4-1-1-1h-1c-.5 0-.8-.5-.5-.9.5-.7 1.4-1.1 2.4-1.1 1.7 0 3 1.3 3.1 3 1.8.4 3.2 1.6 3.7 3.3.1.4-.2.8-.6.7l-1.2-.3c-.3 1.5-1.5 2.3-2.9 2.3-.4 0-.7.2-.8.6-.4 1.4-1.5 2.4-3.1 2.4-.5 0-1 .5-1 1v.5c0 .8-.7 1.5-1.5 1.5H7c-1.7 0-3-1.3-3-3z"/><path d="M7 19c2 0 3-1 3-3"/></svg></div>
       <div>
         <h1>VetFlu — окна риска ВПГП</h1>
         <p>Три канала риска заноса высокопатогенного гриппа птиц — транзит × колонии × зимовки — с погодным форсажем, фоном вспышек, входящим давлением с границ и ветровым переносом по 4 флайвеям России.</p>
@@ -579,7 +579,8 @@ function drawMap() {
     for (const n of ns) {
       const live = now && n.r != null;
       const val = live ? n.r : chanMax(wkRow);
-      const badge = (n.colony ? " 🪺" : "") + (n.wintering ? " ❄️" : "");
+      const flag = (t, c) => ` <span style="font:700 10px var(--mono);border:1px solid ${c};color:${c};border-radius:4px;padding:0 3px;vertical-align:1px">${t}</span>`;
+      const badge = (n.colony ? flag("кол", "#34d399") : "") + (n.wintering ? flag("зим", "#a78bfa") : "");
       const body = live
         ? `R узла = <b style="color:${mColor(n.r)}">${n.r}</b><br><span style="color:#93a0b4">${esc(chanName(n.chan))} ${n.chan_value} × MW<sub>узла</sub> ${n.mw} × MB ${n.mb} × BP ${n.bp ?? 1} × WD ${n.wd ?? 1} × HG ${n.hg ?? 1}${n.anomaly_c != null ? ` · аномалия ${n.anomaly_c > 0 ? "+" : ""}${n.anomaly_c}°C` : ""}</span>`
         : `<span style="color:#93a0b4">${esc(chanName(wkRow.chan))} ${chanMax(wkRow)} — статика канала (R узла — только на «сегодня»)</span>`;
