@@ -23,7 +23,7 @@
   :root {
     color-scheme: dark;
     --bg: #0b0e14; --surface: #12161f; --surface2: #171c27; --border: #1f2530;
-    --text: #e8ecf3; --muted: #93a0b4; --faint: #5d6a7d;
+    --text: #e8ecf3; --muted: #93a0b4; --faint: #7e8899;
     --accent: #38bdf8; --accent-dim: rgba(56,189,248,.12);
     --red: #f87171; --red-dim: rgba(248,113,113,.12);
     --orange: #fb923c; --orange-dim: rgba(251,146,60,.12);
@@ -133,13 +133,14 @@
   .strip-card h2, section > h2, .panel h2 { font-size: 17px; margin: 0 0 4px; letter-spacing: -.01em; }
   .sub { color: var(--muted); font-size: 13.5px; margin: 0 0 12px; }
   .ob-row { display: grid; grid-template-columns: 118px 1fr; gap: 12px; padding: 12px 0 12px 12px; border-top: 1px solid var(--border); align-items: start; }
+  .ob-row > div { min-width: 0; }
   .ob-row:first-child { border-top: none; }
   .ob-nm { font: 700 12px var(--mono); }
   .ob-bar { height: 6px; border-radius: 3px; background: #263042; overflow: hidden; margin: 7px 0 5px; }
   .ob-bar i { display: block; height: 100%; border-radius: 3px; }
   .ob-meta { font: 12px var(--mono); color: var(--muted); }
   .ob-ev { color: var(--faint); font-size: 12px; margin-top: 5px; }
-  .ob-ev span { white-space: nowrap; margin-right: 12px; }
+  .ob-ev span { white-space: nowrap; margin-right: 12px; display: inline-block; margin-bottom: 2px; }
   @media (max-width: 640px) { .ob-row { grid-template-columns: 1fr; } }
   .strip { display: grid; gap: 3px; }
   .strip .row { display: grid; grid-template-columns: 74px 1fr; gap: 8px; align-items: center; }
@@ -329,19 +330,21 @@
     <p>С v2.0 модель считает <b>три канала риска</b> по каждому флайвею и берёт максимум: <b>R = max(M, C, Z) × MW × MB × BP × WD</b>. Канал <b>M — транзит (0–100)</b>: агрегированная миграционная фаза пролёта — взвешенный вклад групп видов-резервуаров, у каждой из которых заданы осеннее и весеннее окна пролёта, пик и размах (σ = размах/6). Осенний транзит учитывается полным весом, весенний — ослабленным (0.62), плюс постоянный фоновый уровень резидентных птиц. Пики сдвинуты по флайвеям: на юге осенний транзит проходит позже — птица добирается с севера, весенний — раньше.</p>
     <p><b>Честно о данных:</b> окна и пики — экспертная параметризация по орнитологическим сводкам (флайвеи BirdLife/Wetlands International, региональные фенокалендари России), с v2.3 уточнённая недельными кривыми относительной абундантности eBird Status &amp; Trends (воспроизводимая оцифровка публичных барчартов, вес в бленде α = 0.3: летнее плато чайковых, резидентный фон речных уток, ранние кулики, острые пики гусей, зимовочные плато нырковых/лебедей) — <a href="./data/ebird_phenology.json">data/ebird_phenology.json</a>. Следующий шаг — сырые выгрузки ebirdst и GPS-треки Movebank: структура модели это позволяет без её пересборки.</p>
     <div class="thresholds">
-      <div class="thr"><b style="color:#5d6a7d">&lt; 15 — фон</b>межсезонный минимум, локальные резидентные птицы</div>
+      <div class="thr"><b style="color:#7e8899">&lt; 15 — фон</b>межсезонный минимум, локальные резидентные птицы</div>
       <div class="thr"><b style="color:#7dd3fc">15–44 — умеренное движение</b>начало/затухание сезона, первые косяки</div>
       <div class="thr"><b style="color:#fbbf24">45–74 — активный пролёт</b>массовый транзит, остановки на водоёмах</div>
       <div class="thr"><b style="color:#f87171">≥ 75 — окно высокого риска</b>пик: молодняк, плотные скопления, контакт с домашней птицей вероятен</div>
     </div>
     <p><b>Каналы колонии и зимовки (v2.0):</b> транзитный календарь не видит два реальных механизма заноса. <b>C — колониальный канал</b>: гнездовые скопления чайковых, бакланов, пеликанов и лысух в июне–августе — форма задаётся гауссианой с пиком на неделе 28: C(w) = 100·c·gauss(w, 28, σ). <b>Z — зимовочный канал</b>: миллионы водоплавающих концентрируются на зимовках с ноября по март — трапеция с заворотом через Новый год (подъём start→full1, плато 1, спад full2→end на дугах окружности недель 1–52): Z(w) = 100·z·trap(w). Параметры — экспертные:</p>
-    <table class="chan-tbl">
-      <tr><th>флайвей</th><th>C: c · σ (пик н28)</th><th>Z: z</th><th>окно зимовки (start→full1→full2→end)</th><th>ориентиры</th></tr>
-      <tr><td>Черном.</td><td>0.82 · 4.5</td><td>0.88</td><td>н44 → н50 → н5 → н10</td><td>Каспий/дельта Волги: бакланы, пеликаны, чайковые, лысухи; зимовки Каспий–Азов–Черноморье (ноябрь 2022 — Дагестан)</td></tr>
-      <tr><td>В-Атл</td><td>0.62 · 5.0</td><td>0.50</td><td>н45 → н51 → н4 → н9</td><td>морские колонии Баренцева/Белого моря, Ладога; зимовки Балтики, полыньи Северо-Запада</td></tr>
-      <tr><td>В-Азия</td><td>0.55 · 5.0</td><td>0.38</td><td>н46 → н51 → н3 → н9</td><td>Ханка, Селенга, Охотское море; зимовки юга Дальнего Востока</td></tr>
-      <tr><td>Центр-Аз</td><td>0.42 · 5.0</td><td>0.25</td><td>н46 → н50 → н3 → н8</td><td>озёрные колонии юга ЗапСибири; зимовки юга Западной Сибири</td></tr>
-    </table>
+    <div style="overflow-x:auto">
+      <table class="chan-tbl">
+        <tr><th>флайвей</th><th>C: c · σ (пик н28)</th><th>Z: z</th><th>окно зимовки (start→full1→full2→end)</th><th>ориентиры</th></tr>
+        <tr><td>Черном.</td><td>0.82 · 4.5</td><td>0.88</td><td>н44 → н50 → н5 → н10</td><td>Каспий/дельта Волги: бакланы, пеликаны, чайковые, лысухи; зимовки Каспий–Азов–Черноморье (ноябрь 2022 — Дагестан)</td></tr>
+        <tr><td>В-Атл</td><td>0.62 · 5.0</td><td>0.50</td><td>н45 → н51 → н4 → н9</td><td>морские колонии Баренцева/Белого моря, Ладога; зимовки Балтики, полыньи Северо-Запада</td></tr>
+        <tr><td>В-Азия</td><td>0.55 · 5.0</td><td>0.38</td><td>н46 → н51 → н3 → н9</td><td>Ханка, Селенга, Охотское море; зимовки юга Дальнего Востока</td></tr>
+        <tr><td>Центр-Аз</td><td>0.42 · 5.0</td><td>0.25</td><td>н46 → н50 → н3 → н8</td><td>озёрные колонии юга ЗапСибири; зимовки юга Западной Сибири</td></tr>
+      </table>
+    </div>
     <div class="posthoc"><b>Честная оговорка о пост-хоке:</b> колониальный канал добавлен в v2.0 после разбора промаха v1 по летней каспийской волне 2021. Его попадание в бэктесте по этой волне — <b>не независимое подтверждение</b> модели, а встроенное объяснение уже известного события. Независимую проверку канал пройдёт только на будущих колониальных волнах.</div>
     <p><b>Погодный слой (фаза 2):</b> итоговый индекс <b>R = max(M, C, Z) × MW × MB × BP × WD</b> — максимальный из трёх каналов умножается на погоду, фон, граничное давление и ветер. MW = 0.70 + 0.45·W + 0.25·P — погода может усилить риск до +40% или ослабить до −30%. <b>W — форсаж движений</b> = 0.6·A + 0.4·F: A — аномалия холода (средняя за 7 дней против нормы той же даты 2015–2024; −8°C и холоднее — максимум), F — доля суток с минусом за 14 дней (прошедшие + прогнозные; прокси ледостава и концентрации птицы на полыньях). <b>P — персистентность</b> = clamp(1 − (T+5)/40): H5N1 в холодной воде живёт недели, в тёплой — дни:</p>
     <svg viewBox="0 0 220 92" style="max-width:340px;width:100%;height:auto;display:block;margin:6px 0 10px" role="img" aria-label="Кривая персистентности P(T)">
@@ -350,9 +353,9 @@
       <path d="M 10,7 L 160,59.5 L 210,59.5" fill="none" stroke="#38bdf8" stroke-width="2"/>
       <text x="14" y="16" fill="#93a0b4" font-size="9" font-family="monospace">P = 1.0 (−5°C — недели в воде)</text>
       <text x="90" y="52" fill="#93a0b4" font-size="9" font-family="monospace">P = 0.25 (минимум)</text>
-      <text x="10" y="88" fill="#5d6a7d" font-size="9" font-family="monospace">−5°C</text>
-      <text x="150" y="88" fill="#5d6a7d" font-size="9" font-family="monospace">+25°C</text>
-      <text x="196" y="88" fill="#5d6a7d" font-size="9" font-family="monospace">+35°C</text>
+      <text x="10" y="88" fill="#7e8899" font-size="9" font-family="monospace">−5°C</text>
+      <text x="150" y="88" fill="#7e8899" font-size="9" font-family="monospace">+25°C</text>
+      <text x="196" y="88" fill="#7e8899" font-size="9" font-family="monospace">+35°C</text>
     </svg>
     <p>Погода — Open-Meteo (архив + прогноз), 4 точки на флайвей, пересчёт — GitHub Actions ежедневно; W и P — прозрачные эвристики, а не калиброванная эпидемиология. Детальный погодный мониторинг тех же точек — в <a href="https://shray77.github.io/vet-meteo/">vet-meteo</a>.</p>
     <p><b>Фон заносов (фаза 3, с v2.3 — дистанционный):</b> <b>B</b> — свежие события ВПГП вверх по флайвею из WOAH WAHIS (публичный API официальных уведомлений — тот же источник, что скрейпит <a href="https://shray77.github.io/vet-heatmap/">ВетКарта</a>; FAO EMPRES-i API недоступен — проверено 12.10.2026, HTTP 404). Каждое событие весит по свежести последнего рапорта (≤14 дней — 1.0, ≤30 — 0.6, ≤60 — 0.3) и по <b>гаверсинус-дистанции</b> от опорных точек страны (центроиды, крупные страны — набором точек) до узлов флайвея с экспоненциальным затуханием exp(−d/1000 км): вспышка в 300 км от узла даёт ~0.74 веса, в 2000 км — ~0.14; без координат страны — плоский вес (старое поведение). Сумма нормируется сатурацией на 10 условных единицах, MB = 0.85 + 0.30·B; <b>у каждого из 16 узлов — свой MB</b> по своей дистанционной сумме (data/country_coords.json). Публикация уведомлений отстаёт от реальных событий — фон не заменяет официальные каналы Россельхознадзора (ФСВПС).</p>
@@ -820,8 +823,8 @@ function drawHistory() {
   let svg = `<svg viewBox="0 0 ${W} ${H}" preserveAspectRatio="none" role="img" aria-label="История R по флайвеям за ${recs.length} дней">`;
   svg += `<line x1="0" y1="${y(45)}" x2="${W}" y2="${y(45)}" stroke="#2c3543" stroke-width=".6" stroke-dasharray="3 3"/>`;
   svg += `<line x1="0" y1="${y(75)}" x2="${W}" y2="${y(75)}" stroke="#2c3543" stroke-width=".6" stroke-dasharray="3 3"/>`;
-  svg += `<text x="${W - 2}" y="${y(75) - 2}" fill="#5d6a7d" font-size="7" text-anchor="end" font-family="monospace">75 — высок. риск</text>`;
-  svg += `<text x="${W - 2}" y="${y(45) - 2}" fill="#5d6a7d" font-size="7" text-anchor="end" font-family="monospace">45 — пролёт</text>`;
+  svg += `<text x="${W - 2}" y="${y(75) - 2}" fill="#7e8899" font-size="7" text-anchor="end" font-family="monospace">75 — высок. риск</text>`;
+  svg += `<text x="${W - 2}" y="${y(45) - 2}" fill="#7e8899" font-size="7" text-anchor="end" font-family="monospace">45 — пролёт</text>`;
   for (const f of M.flyways) {
     const pts = recs.map((h, i) => { const v = h.per_flyway[f.id].r; return v == null ? null : `${x(i).toFixed(1)},${y(v).toFixed(1)}`; }).filter(Boolean);
     if (pts.length > 1) svg += `<polyline points="${pts.join(" ")}" fill="none" stroke="${f.color}" stroke-width="1.7" vector-effect="non-scaling-stroke"/>`;
