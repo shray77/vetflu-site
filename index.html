@@ -19,54 +19,61 @@
 <link rel="alternate" type="application/rss+xml" title="VetFlu — окна риска ВПГП" href="./feed.xml">
 <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🦆</text></svg>">
 <link rel="stylesheet" href="./vendor/leaflet.css">
+<link rel="stylesheet" href="./vet-ds.css">
 <style>
+  /* Ядро — vet-ds (копия из репо экосистемы). Ниже — только характер VetFlu:
+     небесно-голубой акцент + локальные алиасы, чтобы вся существующая
+     вёрстка читала токены ДС, а не дублировала значения. */
   :root {
     color-scheme: dark;
-    --bg: #0b0e14; --surface: #12161f; --surface2: #171c27; --border: #1f2530;
-    --text: #e8ecf3; --muted: #93a0b4; --faint: #7e8899;
-    --accent: #38bdf8; --accent-dim: rgba(56,189,248,.12);
-    --red: #f87171; --red-dim: rgba(248,113,113,.12);
-    --orange: #fb923c; --orange-dim: rgba(251,146,60,.12);
-    --amber: #fbbf24; --amber-dim: rgba(251,191,36,.12);
-    --green: #34d399; --violet: #a78bfa;
-    --mono: ui-monospace, "Cascadia Code", Consolas, monospace;
+    --ds-accent: #38bdf8; --ds-accent-strong: #0ea5e9; --ds-accent-ink: #06121c;
+    --bg: var(--ds-bg); --surface: var(--ds-surface); --surface2: var(--ds-surface2); --border: var(--ds-border);
+    --text: var(--ds-text); --muted: var(--ds-muted); --faint: var(--ds-faint);
+    --accent: var(--ds-accent);
+    --red: var(--ds-red); --orange: var(--ds-orange); --amber: var(--ds-amber);
+    --green: var(--ds-green); --violet: var(--ds-violet);
+    --mono: var(--ds-font-mono);
   }
   * { box-sizing: border-box; }
-  body { background: var(--bg); color: var(--text); font: 16px/1.6 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; margin: 0; }
+  :focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+  body { background: var(--bg); color: var(--text); font: 16px/1.6 var(--ds-font-sans); margin: 0; }
 
   .hub { display: flex; gap: 6px; flex-wrap: wrap; font: 12.5px var(--mono); max-width: 980px; margin: 0 auto; padding: 12px 20px 0; }
   .hub a { color: var(--muted); text-decoration: none; border: 1px solid var(--border); background: var(--surface); border-radius: 999px; padding: 5px 12px; }
-  .hub a:hover { color: var(--text); border-color: #2c3543; }
-  .hub a.on { color: var(--accent); border-color: rgba(56,189,248,.45); background: var(--accent-dim); }
+  .hub a:hover { color: var(--text); border-color: color-mix(in srgb, var(--muted) 40%, transparent); }
+  .hub a.on { color: var(--accent); border-color: color-mix(in srgb, var(--accent) 45%, transparent); background: color-mix(in srgb, var(--accent) 12%, transparent); }
 
   header.top {
-    background: linear-gradient(180deg, rgba(56,189,248,.07), transparent 70%);
     border-bottom: 1px solid var(--border); padding: 22px 0 20px;
   }
   .wrap { max-width: 980px; margin: 0 auto; padding: 0 20px; }
   .topbar { display: flex; align-items: center; justify-content: space-between; gap: 16px; flex-wrap: wrap; }
   .brand { display: flex; align-items: center; gap: 16px; }
-  .logo { width: 52px; height: 52px; border-radius: 14px; background: var(--accent-dim); border: 1px solid rgba(56,189,248,.35); display: grid; place-items: center; font-size: 26px; }
+  .logo { width: 52px; height: 52px; border-radius: var(--ds-radius); background: color-mix(in srgb, var(--accent) 12%, transparent); border: 1px solid color-mix(in srgb, var(--accent) 35%, transparent); display: grid; place-items: center; font-size: 26px; color: var(--accent); }
   h1 { font-size: 24px; margin: 0; letter-spacing: -.02em; }
   .brand p { margin: 2px 0 0; color: var(--muted); font-size: 14px; }
   .live { display: flex; align-items: center; gap: 8px; color: var(--muted); font-size: 13px; font-family: var(--mono); }
   .dot { width: 8px; height: 8px; border-radius: 50%; background: var(--faint); flex: none; }
-  .dot.ok { background: var(--accent); box-shadow: 0 0 8px rgba(56,189,248,.7); }
+  .dot.ok { background: var(--accent); box-shadow: 0 0 8px color-mix(in srgb, var(--accent) 70%, transparent); }
 
   .stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 12px; margin: 24px 0 8px; }
-  .stat { background: var(--surface); border: 1px solid var(--border); border-radius: 12px; padding: 14px 16px; }
+  .stat { background: var(--surface); border: 1px solid var(--border); border-radius: var(--ds-radius); padding: var(--ds-space-3) var(--ds-space-4); }
   .stat b { display: block; font-size: 22px; font-weight: 700; letter-spacing: -.02em; }
   .stat span { color: var(--muted); font-size: 12.5px; }
 
-  .map-card { background: var(--surface); border: 1px solid var(--border); border-radius: 14px; overflow: hidden; margin: 18px 0 8px; }
+  .map-card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--ds-radius); overflow: hidden; margin: 18px 0 8px; }
   #map { height: 460px; width: 100%; background: #0d1220; }
   .map-note { font: 11.5px var(--mono); color: var(--faint); padding: 8px 14px; border-top: 1px solid var(--border); display: flex; justify-content: space-between; gap: 10px; flex-wrap: wrap; }
   .map-note .legend { display: flex; gap: 12px; flex-wrap: wrap; }
   .map-note .legend i { display: inline-block; width: 14px; height: 4px; border-radius: 2px; margin-right: 5px; vertical-align: 3px; }
   .leaflet-tile-pane { filter: brightness(.6) contrast(1.15) saturate(.6); }
-  .leaflet-popup-content-wrapper { background: #12161f; color: #e8ecf3; border-radius: 10px; border: 1px solid #2c3543; }
-  .leaflet-popup-tip { background: #12161f; }
-  .leaflet-popup-content { margin: 12px 16px; font: 13px/1.5 system-ui; }
+  .leaflet-bar a { background: var(--surface); color: var(--text); border-bottom: 1px solid var(--border); }
+  .leaflet-bar a:hover { background: var(--surface2); color: var(--accent); }
+  .leaflet-bar a:first-child { border-radius: var(--ds-radius-s) var(--ds-radius-s) 0 0; }
+  .leaflet-bar a:last-child { border-radius: 0 0 var(--ds-radius-s) var(--ds-radius-s); }
+  .leaflet-popup-content-wrapper { background: var(--ds-surface); color: var(--ds-text); border-radius: var(--ds-radius); border: 1px solid color-mix(in srgb, var(--ds-muted) 40%, transparent); }
+  .leaflet-popup-tip { background: var(--ds-surface); }
+  .leaflet-popup-content { margin: 12px 16px; font: 13px/1.5 var(--ds-font-sans); }
   /* Leaflet 1.8+ вшивает флаг Украины в дефолтный префикс атрибуции
      (svg.leaflet-attribution-flag). Префикс заменён чистой ссылкой в initMap();
      это правило — страховка, как в vet-meteo (GisMap.tsx + globals.css). */
@@ -76,11 +83,12 @@
   .scrubber label { font: 12.5px var(--mono); color: var(--muted); white-space: nowrap; }
   .scrubber input[type=range] { flex: 1 1 220px; accent-color: var(--accent); }
   .scrubber .wk { font: 700 13px var(--mono); color: var(--accent); min-width: 210px; }
-  .btn-mini { background: var(--surface2); border: 1px solid var(--border); color: var(--muted); font: 12px var(--mono); border-radius: 999px; padding: 6px 12px; cursor: pointer; }
-  .btn-mini:hover { color: var(--accent); border-color: rgba(56,189,248,.45); }
+  .btn-mini { background: var(--surface2); border: 1px solid var(--border); color: var(--muted); font: 600 12px var(--mono); border-radius: var(--ds-radius-s); padding: 6px 12px; min-height: 30px; display: inline-flex; align-items: center; gap: 6px; cursor: pointer; transition: color .15s, border-color .15s; }
+  .btn-mini:hover { color: var(--accent); border-color: color-mix(in srgb, var(--accent) 45%, transparent); }
+  @media (pointer: coarse) { .btn-mini { min-height: 38px; } }
 
   .flyways { display: grid; grid-template-columns: repeat(auto-fit, minmax(230px, 1fr)); gap: 12px; margin: 18px 0 8px; }
-  .fw { background: var(--surface); border: 1px solid var(--border); border-top: 3px solid var(--faint); border-radius: 14px; padding: 14px 16px; }
+  .fw { background: var(--surface); border: 1px solid var(--border); border-top: 3px solid var(--faint); border-radius: var(--ds-radius); padding: var(--ds-space-3) var(--ds-space-4); }
   .fw h3 { margin: 0 0 2px; font-size: 15.5px; letter-spacing: -.01em; }
   .fw .reg { color: var(--faint); font: 11.5px var(--mono); margin-bottom: 10px; }
   .fw .mrow { display: flex; align-items: baseline; gap: 10px; margin-bottom: 6px; }
@@ -90,7 +98,7 @@
   .fw .top { color: var(--faint); font-size: 12.5px; margin-bottom: 10px; }
   .fw .factors { display: flex; gap: 6px; flex-wrap: wrap; }
   .fw .factor { font: 700 10.5px var(--mono); padding: 2px 8px; border-radius: 999px; border: 1px solid var(--border); color: var(--faint); background: var(--surface2); }
-  .fw .factor.on { color: var(--accent); border-color: rgba(56,189,248,.4); background: var(--accent-dim); }
+  .fw .factor.on { color: var(--accent); border-color: color-mix(in srgb, var(--accent) 40%, transparent); background: color-mix(in srgb, var(--accent) 12%, transparent); }
   .fw .win { margin-top: 10px; padding-top: 8px; border-top: 1px solid var(--border); font: 11.5px var(--mono); color: var(--muted); }
 
   /* v2.0: канал-бейдж + мини-бары трёх каналов + спарклайн истории */
@@ -115,8 +123,8 @@
 
   /* v2.0: узлы сейчас */
   .nd-chip { display: inline-block; font: 700 9.5px var(--mono); padding: 1px 7px; border-radius: 999px; border: 1px solid var(--border); margin-left: 4px; }
-  .nd-chip.col { color: var(--green); border-color: rgba(52,211,153,.4); background: rgba(52,211,153,.1); }
-  .nd-chip.win { color: var(--violet); border-color: rgba(167,139,250,.4); background: rgba(167,139,250,.1); }
+  .nd-chip.col { color: var(--green); border-color: color-mix(in srgb, var(--green) 40%, transparent); background: color-mix(in srgb, var(--green) 10%, transparent); }
+  .nd-chip.win { color: var(--violet); border-color: color-mix(in srgb, var(--violet) 40%, transparent); background: color-mix(in srgb, var(--violet) 10%, transparent); }
 
   /* v2.0: мини-FAQ методологии */
   .faq { margin: 10px 0; }
@@ -126,10 +134,10 @@
   .chan-tbl th { text-align: left; color: var(--faint); padding: 4px 8px; border-bottom: 1px solid var(--border); font-weight: 700; }
   .chan-tbl td { padding: 5px 8px; border-bottom: 1px solid var(--border); color: var(--muted); }
   .chan-tbl tr:last-child td { border-bottom: none; }
-  .posthoc { border-left: 3px solid var(--orange); background: var(--orange-dim); border-radius: 6px; padding: 10px 14px; font-size: 13px; color: var(--muted); margin: 10px 0; }
+  .posthoc { border-left: 3px solid var(--orange); background: color-mix(in srgb, var(--orange) 12%, transparent); border-radius: var(--ds-radius-s); padding: 10px 14px; font-size: 13px; color: var(--muted); margin: 10px 0; }
   .posthoc b { color: var(--orange); }
 
-  .strip-card { background: var(--surface); border: 1px solid var(--border); border-radius: 14px; padding: 14px 16px; margin: 18px 0 8px; }
+  .strip-card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--ds-radius); padding: var(--ds-space-3) var(--ds-space-4); margin: 18px 0 8px; }
   .strip-card h2, section > h2, .panel h2 { font-size: 17px; margin: 0 0 4px; letter-spacing: -.01em; }
   .sub { color: var(--muted); font-size: 13.5px; margin: 0 0 12px; }
   .ob-row { display: grid; grid-template-columns: 118px 1fr; gap: 12px; padding: 12px 0 12px 12px; border-top: 1px solid var(--border); align-items: start; }
@@ -152,11 +160,11 @@
   .strip .wkcells { display: grid; grid-template-columns: repeat(52, 1fr); gap: 2px; font: 9px var(--mono); color: var(--faint); }
   .strip .wkcells span { text-align: left; }
 
-  .panel { background: var(--surface); border: 1px solid var(--border); border-radius: 14px; padding: 16px 18px; margin: 18px 0 8px; }
+  .panel { background: var(--surface); border: 1px solid var(--border); border-radius: var(--ds-radius); padding: var(--ds-space-4) var(--ds-space-5); margin: 18px 0 8px; }
   .chips { display: flex; gap: 8px; flex-wrap: wrap; margin: 8px 0 14px; }
   .chip-btn { background: var(--surface); border: 1px solid var(--border); color: var(--muted); font: 12px var(--mono); border-radius: 999px; padding: 6px 12px; cursor: pointer; transition: .15s; }
   .chip-btn:hover { color: var(--text); }
-  .chip-btn.active { color: var(--accent); border-color: rgba(56,189,248,.45); background: var(--accent-dim); }
+  .chip-btn.active { color: var(--accent); border-color: color-mix(in srgb, var(--accent) 45%, transparent); background: color-mix(in srgb, var(--accent) 12%, transparent); }
   table.spec { width: 100%; border-collapse: collapse; font-size: 13.5px; }
   table.spec th { text-align: left; color: var(--faint); font: 700 11px var(--mono); text-transform: uppercase; letter-spacing: .05em; padding: 6px 8px; border-bottom: 1px solid var(--border); }
   table.spec td { padding: 8px; border-bottom: 1px solid var(--border); vertical-align: top; }
@@ -169,7 +177,7 @@
   table.spec .wbar { display: inline-block; height: 6px; border-radius: 3px; vertical-align: 2px; margin-right: 6px; }
   table.spec .note { color: var(--muted); font-size: 12.5px; }
 
-  article.doc { background: var(--surface); border: 1px solid var(--border); border-radius: 14px; padding: 18px 22px; margin: 14px 0; }
+  article.doc { background: var(--surface); border: 1px solid var(--border); border-radius: var(--ds-radius); padding: var(--ds-space-4) var(--ds-space-5); margin: 14px 0; }
   article.doc h2 { font-size: 17px; margin: 0 0 10px; }
   article.doc p { margin: 8px 0; color: var(--muted); }
   article.doc p b, article.doc li b { color: var(--text); }
@@ -177,16 +185,16 @@
   article.doc code { overflow-wrap: anywhere; } /* длинные URL не должны раздувать мобильный документ */
   article.doc li { margin: 5px 0; }
   .phase-badge { display: inline-block; font: 700 10.5px var(--mono); letter-spacing: .06em; text-transform: uppercase; padding: 2px 9px; border-radius: 999px; margin-left: 8px; vertical-align: 2px; }
-  .phase-badge.p1 { color: var(--green); background: rgba(52,211,153,.12); border: 1px solid rgba(52,211,153,.4); }
-  .phase-badge.p2 { color: var(--amber); background: var(--amber-dim); border: 1px dashed rgba(251,191,36,.5); }
+  .phase-badge.p1 { color: var(--green); background: color-mix(in srgb, var(--green) 12%, transparent); border: 1px solid color-mix(in srgb, var(--green) 40%, transparent); }
+  .phase-badge.p2 { color: var(--amber); background: color-mix(in srgb, var(--amber) 12%, transparent); border: 1px dashed color-mix(in srgb, var(--amber) 50%, transparent); }
   .phase-badge.p3 { color: var(--faint); background: var(--surface2); border: 1px dashed var(--border); }
   .thresholds { display: grid; grid-template-columns: repeat(auto-fit, minmax(190px, 1fr)); gap: 10px; margin: 12px 0; }
-  .thr { border: 1px solid var(--border); border-radius: 10px; padding: 10px 12px; font-size: 12.5px; color: var(--muted); }
+  .thr { border: 1px solid var(--border); border-radius: var(--ds-radius-s); padding: 10px 12px; font-size: 12.5px; color: var(--muted); }
   .thr b { display: block; font: 700 13px var(--mono); margin-bottom: 2px; }
-  a { color: var(--blue, #7dd3fc); text-decoration: none; }
+  a { color: var(--ds-blue); text-decoration: none; }
   a:hover { text-decoration: underline; }
 
-  footer { border-top: 1px solid var(--border); margin-top: 40px; padding: 18px 0 30px; }
+  footer { border-top: 1px solid var(--border); margin-top: var(--ds-space-7); padding: var(--ds-space-5) 0 var(--ds-space-4); }
   .foot { display: flex; gap: 18px; flex-wrap: wrap; font-size: 13px; color: var(--faint); }
   .foot a { color: var(--muted); text-decoration: none; }
   .foot a:hover { color: var(--accent); }
@@ -205,12 +213,12 @@
   .sim-row label { font-size: 12.5px; color: var(--muted); }
   .sim-row output { font: 12.5px var(--mono); color: var(--text); text-align: right; }
   .sim-row input[type=range] { width: 100%; accent-color: var(--accent); }
-  .sim-out { border: 1px solid var(--border); border-radius: 12px; padding: 14px 16px; background: var(--surface2); }
+  .sim-out { border: 1px solid var(--border); border-radius: var(--ds-radius); padding: 14px 16px; background: var(--surface2); }
   .sim-out .big { font-size: 44px; font-weight: 800; line-height: 1; }
   .sim-out .decomp { font: 12px var(--mono); color: var(--muted); margin-top: 8px; line-height: 1.55; }
   .sim-chips { margin: 10px 0 4px; }
   /* v2.2: график истории */
-  #hist-chart svg { width: 100%; height: auto; display: block; background: var(--surface2); border: 1px solid var(--border); border-radius: 12px; padding: 8px; box-sizing: border-box; }
+  #hist-chart svg { width: 100%; height: auto; display: block; background: var(--surface2); border: 1px solid var(--border); border-radius: var(--ds-radius); padding: 8px; box-sizing: border-box; }
   .hist-legend { display: flex; flex-wrap: wrap; gap: 12px; font-size: 12px; color: var(--muted); margin-top: 8px; }
   .hist-legend i { display: inline-block; width: 14px; height: 3px; border-radius: 2px; vertical-align: middle; margin-right: 5px; }
   .hist-legend .dim { color: var(--faint); }
@@ -236,7 +244,7 @@
 <header class="top">
   <div class="wrap topbar">
     <div class="brand">
-      <div class="logo"><svg viewBox="0 0 24 24" width="28" height="28" fill="none" stroke="#38bdf8" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 16c0-3 2-5 5-5 1 0 1.6-1.2 1.8-2.4.1-.9.9-1.6 1.8-1.6h.9c.6 0 1-.5 1-1 0-.6-.4-1-1-1h-1c-.5 0-.8-.5-.5-.9.5-.7 1.4-1.1 2.4-1.1 1.7 0 3 1.3 3.1 3 1.8.4 3.2 1.6 3.7 3.3.1.4-.2.8-.6.7l-1.2-.3c-.3 1.5-1.5 2.3-2.9 2.3-.4 0-.7.2-.8.6-.4 1.4-1.5 2.4-3.1 2.4-.5 0-1 .5-1 1v.5c0 .8-.7 1.5-1.5 1.5H7c-1.7 0-3-1.3-3-3z"/><path d="M7 19c2 0 3-1 3-3"/></svg></div>
+      <div class="logo"><svg viewBox="0 0 24 24" width="28" height="28" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 16c0-3 2-5 5-5 1 0 1.6-1.2 1.8-2.4.1-.9.9-1.6 1.8-1.6h.9c.6 0 1-.5 1-1 0-.6-.4-1-1-1h-1c-.5 0-.8-.5-.5-.9.5-.7 1.4-1.1 2.4-1.1 1.7 0 3 1.3 3.1 3 1.8.4 3.2 1.6 3.7 3.3.1.4-.2.8-.6.7l-1.2-.3c-.3 1.5-1.5 2.3-2.9 2.3-.4 0-.7.2-.8.6-.4 1.4-1.5 2.4-3.1 2.4-.5 0-1 .5-1 1v.5c0 .8-.7 1.5-1.5 1.5H7c-1.7 0-3-1.3-3-3z"/><path d="M7 19c2 0 3-1 3-3"/></svg></div>
       <div>
         <h1>VetFlu — окна риска ВПГП</h1>
         <p>Три канала риска заноса высокопатогенного гриппа птиц — транзит × колонии × зимовки — с погодным форсажем, фоном вспышек, входящим давлением с границ и ветровым переносом по 4 флайвеям России.</p>
@@ -255,7 +263,7 @@
       <label for="week">неделя</label>
       <input id="week" type="range" min="1" max="52" step="1" value="1">
       <span class="wk" id="wk-label">—</span>
-      <button class="btn-mini" id="btn-now" type="button">сегодня</button>
+      <button class="btn-mini" id="btn-now" type="button"><svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M8 2v4"/><path d="M16 2v4"/><rect width="18" height="18" x="3" y="4" rx="2"/><path d="M3 10h18"/><path d="m9 16 2 2 4-4"/></svg>сегодня</button>
     </div>
     <div class="map-note">
       <span id="map-note">толщина коридора = индекс пролёта M; точки — узлы концентраций водоплавающих</span>

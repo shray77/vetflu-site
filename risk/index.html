@@ -10,21 +10,25 @@
 <meta property="og:url" content="https://shray77.github.io/vetflu-site/risk/">
 <link rel="canonical" href="https://shray77.github.io/vetflu-site/risk/">
 <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🦆</text></svg>">
+<link rel="stylesheet" href="../vet-ds.css">
 <style>
+  /* Ядро — vet-ds; характер VetFlu — небесный акцент */
   :root {
     color-scheme: dark;
-    --bg: #0b0e14; --surface: #12161f; --surface2: #171c27; --border: #1f2530;
-    --text: #e8ecf3; --muted: #93a0b4; --faint: #7e8899;
-    --accent: #38bdf8; --red: #f87171; --amber: #fbbf24;
-    --mono: ui-monospace, "Cascadia Code", Consolas, monospace;
+    --ds-accent: #38bdf8; --ds-accent-strong: #0ea5e9; --ds-accent-ink: #06121c;
+    --bg: var(--ds-bg); --surface: var(--ds-surface); --surface2: var(--ds-surface2); --border: var(--ds-border);
+    --text: var(--ds-text); --muted: var(--ds-muted); --faint: var(--ds-faint);
+    --accent: var(--ds-accent); --red: var(--ds-red); --amber: var(--ds-amber);
+    --mono: var(--ds-font-mono);
   }
   * { box-sizing: border-box; }
-  body { background: var(--bg); color: var(--text); font: 15px/1.55 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; margin: 0; padding: 18px 16px 26px; }
+  :focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+  body { background: var(--bg); color: var(--text); font: 15px/1.55 var(--ds-font-sans); margin: 0; padding: 18px 16px 26px; }
   .hd { display: flex; align-items: baseline; gap: 10px; flex-wrap: wrap; margin-bottom: 12px; }
   .hd h1 { font-size: 17px; margin: 0; }
   .hd .up { color: var(--faint); font: 11.5px var(--mono); }
   .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(215px, 1fr)); gap: 10px; }
-  .fw { background: var(--surface); border: 1px solid var(--border); border-top: 3px solid var(--faint); border-radius: 12px; padding: 12px 14px; }
+  .fw { background: var(--surface); border: 1px solid var(--border); border-top: 3px solid var(--faint); border-radius: var(--ds-radius); padding: var(--ds-space-3); }
   .fw h2 { margin: 0; font-size: 13.5px; font-weight: 600; }
   .fw .reg { color: var(--muted); font-size: 11.5px; margin: 1px 0 8px; }
   .r { font-size: 34px; font-weight: 700; font-family: var(--mono); line-height: 1; }

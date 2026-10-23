@@ -12,34 +12,39 @@
 <meta name="twitter:card" content="summary">
 <link rel="canonical" href="https://shray77.github.io/vetflu-site/terms.html">
 <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🦆</text></svg>">
+<link rel="stylesheet" href="./vet-ds.css">
 <style>
+  /* Ядро — vet-ds; ниже — характер VetFlu (небесный акцент) + локальные алиасы.
+     Заодно фикс: акцент был чужим зелёным #34d399 (дефолт экосистемы),
+     --faint — пережиток #5d6a7d (3.3:1, ниже AA). */
   :root {
     color-scheme: dark;
-    --bg: #0b0e14; --surface: #12161f; --surface2: #171c27; --border: #1f2530;
-    --text: #e8ecf3; --muted: #93a0b4; --faint: #5d6a7d;
-    --accent: #34d399; --accent-dim: rgba(52,211,153,.12);
-    --blue: #7dd3fc; --warn: #fbbf24; --err: #f87171;
-    --mono: ui-monospace, "Cascadia Code", Consolas, monospace;
+    --ds-accent: #38bdf8; --ds-accent-strong: #0ea5e9; --ds-accent-ink: #06121c;
+    --bg: var(--ds-bg); --surface: var(--ds-surface); --surface2: var(--ds-surface2); --border: var(--ds-border);
+    --text: var(--ds-text); --muted: var(--ds-muted); --faint: var(--ds-faint);
+    --accent: var(--ds-accent);
+    --blue: var(--ds-blue); --warn: var(--ds-amber); --err: var(--ds-red);
+    --mono: var(--ds-font-mono);
   }
   * { box-sizing: border-box; }
   html { scroll-behavior: smooth; }
   :focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
-  body { background: var(--bg); color: var(--text); font: 16px/1.65 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; margin: 0; }
+  body { background: var(--bg); color: var(--text); font: 16px/1.65 var(--ds-font-sans); margin: 0; }
   .hub { display: flex; gap: 6px; flex-wrap: wrap; font: 12.5px var(--mono); max-width: 860px; margin: 0 auto; padding: 12px 20px 0; }
   .hub a { color: var(--muted); text-decoration: none; border: 1px solid var(--border); background: var(--surface); border-radius: 999px; padding: 5px 12px; }
-  .hub a:hover { color: var(--text); border-color: #2c3543; }
-  .hub a.on { color: var(--accent); border-color: rgba(52,211,153,.45); background: var(--accent-dim); }
-  header.top { background: linear-gradient(180deg, rgba(52,211,153,.06), transparent 70%); border-bottom: 1px solid var(--border); padding: 26px 0 22px; }
+  .hub a:hover { color: var(--text); border-color: color-mix(in srgb, var(--muted) 40%, transparent); }
+  .hub a.on { color: var(--accent); border-color: color-mix(in srgb, var(--accent) 45%, transparent); background: color-mix(in srgb, var(--accent) 12%, transparent); }
+  header.top { border-bottom: 1px solid var(--border); padding: 26px 0 22px; }
   .wrap { max-width: 860px; margin: 0 auto; padding: 0 20px; }
   .brand { display: flex; align-items: center; gap: 16px; }
-  .logo { width: 52px; height: 52px; border-radius: 14px; background: var(--accent-dim); border: 1px solid rgba(52,211,153,.35); display: grid; place-items: center; font-size: 26px; flex: none; }
+  .logo { width: 52px; height: 52px; border-radius: var(--ds-radius); background: color-mix(in srgb, var(--accent) 12%, transparent); border: 1px solid color-mix(in srgb, var(--accent) 35%, transparent); display: grid; place-items: center; font-size: 26px; flex: none; color: var(--accent); }
   h1 { font-size: 23px; margin: 0; letter-spacing: -.02em; }
   .brand p { margin: 2px 0 0; color: var(--muted); font-size: 14px; }
-  .tldr { background: var(--accent-dim); border: 1px solid rgba(52,211,153,.35); border-radius: 14px; padding: 16px 20px; margin: 26px 0 8px; }
+  .tldr { background: color-mix(in srgb, var(--accent) 12%, transparent); border: 1px solid color-mix(in srgb, var(--accent) 35%, transparent); border-radius: var(--ds-radius); padding: 16px 20px; margin: 26px 0 8px; }
   .tldr h2 { margin: 0 0 10px; font-size: 14px; text-transform: uppercase; letter-spacing: .08em; color: var(--accent); }
   .tldr ul { margin: 0; padding-left: 20px; }
   .tldr li { margin: 6px 0; font-size: 15px; }
-  article section { background: var(--surface); border: 1px solid var(--border); border-radius: 14px; padding: 18px 22px; margin: 14px 0; }
+  article section { background: var(--surface); border: 1px solid var(--border); border-radius: var(--ds-radius); padding: var(--ds-space-4) var(--ds-space-5); margin: 14px 0; }
   article h2 { font-size: 17px; margin: 0 0 10px; letter-spacing: -.01em; }
   article p { margin: 8px 0; color: var(--muted); }
   article p b, article li b { color: var(--text); }
@@ -48,7 +53,7 @@
   a { color: var(--blue); text-decoration: none; }
   a:hover { text-decoration: underline; }
   .upd { color: var(--faint); font: 12.5px var(--mono); margin-top: 18px; }
-  footer { border-top: 1px solid var(--border); margin-top: 36px; padding: 18px 0 30px; }
+  footer { border-top: 1px solid var(--border); margin-top: var(--ds-space-6); padding: var(--ds-space-5) 0 var(--ds-space-4); }
   .foot { display: flex; gap: 18px; flex-wrap: wrap; font-size: 13px; color: var(--faint); }
   .foot a { color: var(--muted); text-decoration: none; }
   .foot a:hover { color: var(--accent); }
@@ -66,7 +71,7 @@
 <header class="top">
   <div class="wrap">
     <div class="brand">
-      <div class="logo"><svg viewBox="0 0 24 24" width="28" height="28" fill="none" stroke="#38bdf8" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 16c0-3 2-5 5-5 1 0 1.6-1.2 1.8-2.4.1-.9.9-1.6 1.8-1.6h.9c.6 0 1-.5 1-1 0-.6-.4-1-1-1h-1c-.5 0-.8-.5-.5-.9.5-.7 1.4-1.1 2.4-1.1 1.7 0 3 1.3 3.1 3 1.8.4 3.2 1.6 3.7 3.3.1.4-.2.8-.6.7l-1.2-.3c-.3 1.5-1.5 2.3-2.9 2.3-.4 0-.7.2-.8.6-.4 1.4-1.5 2.4-3.1 2.4-.5 0-1 .5-1 1v.5c0 .8-.7 1.5-1.5 1.5H7c-1.7 0-3-1.3-3-3z"/><path d="M7 19c2 0 3-1 3-3"/></svg></div>
+      <div class="logo"><svg viewBox="0 0 24 24" width="28" height="28" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 16c0-3 2-5 5-5 1 0 1.6-1.2 1.8-2.4.1-.9.9-1.6 1.8-1.6h.9c.6 0 1-.5 1-1 0-.6-.4-1-1-1h-1c-.5 0-.8-.5-.5-.9.5-.7 1.4-1.1 2.4-1.1 1.7 0 3 1.3 3.1 3 1.8.4 3.2 1.6 3.7 3.3.1.4-.2.8-.6.7l-1.2-.3c-.3 1.5-1.5 2.3-2.9 2.3-.4 0-.7.2-.8.6-.4 1.4-1.5 2.4-3.1 2.4-.5 0-1 .5-1 1v.5c0 .8-.7 1.5-1.5 1.5H7c-1.7 0-3-1.3-3-3z"/><path d="M7 19c2 0 3-1 3-3"/></svg></div>
       <div>
         <h1>Условия использования и дисклеймер</h1>
         <p>Предиктивные окна риска заноса ВПГП — миграционная фаза пролёта по флайвеям РФ</p>
