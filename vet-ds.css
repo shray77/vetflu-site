@@ -1,60 +1,84 @@
 /* ==========================================================================
-   vet-ds — дизайн-система ветеринарной экосистемы shray77
+   vet-ds v2.0 «Научная периодика» — дизайн-система ветеринарной экосистемы
    --------------------------------------------------------------------------
    Один файл: токены + компоненты. Подключается витриной как копия
    (репо приватное — CDN недоступен) или git submodule.
 
-   Палитра собрана из фактических значений 7 витрин (октябрь 2026):
-   vetflu-site / vetdigest-site / biothreat-site / vetrecall-site /
-   vet-hub / rss-core-site / vetos. Светлая тема — из vettools.
+   ГОЛОС СИСТЕМЫ (v2.0, решение владельца — Task 140):
+   середина между зумер-модой и научной сдержанностью. Личность выражают
+   типографика, данные и аннотации — НЕ декор. Референс: научная периодика
+   (Our World in Data × издательские системы Anthropic).
+
+   Темы:
+     :root                    — A-light «Научная периодика» (бумага) — ДЕФОЛТ
+     [data-theme="dark"]      — A-dark «Вечерний номер» (тёплый графит)
+     [data-theme="instrument"]— C «Прибор» (графит + бирюза) — дашборды с картой
+     [data-theme="light"]     — алиас A-light (обратная совместимость v0.1)
+
+   Витрина-характер: :root { --ds-accent: <светлое значение>; }
+   [data-theme="dark"] { --ds-accent: <тёмное значение>; } — все производные
+   (color-mix, currentColor, focus) едут автоматически.
+
+   Шрифты: Google Fonts (link в README; офлайн — деградация на системные).
 
    Правила экосистемы (не менять без причины):
    - иконки = Lucide inline SVG; эмодзи в UI запрещены;
-   - текст ≥ AA (4.5:1): --ds-faint — нижняя граница для читаемого текста;
+   - текст ≥ AA (4.5:1): --ds-faint — нижняя граница читаемого (проверено
+     на bg/surface/surface2 во всех темах, scripts/contrast_v2.py);
    - ✓ ✗ ⚠ — легитимные типографские знаки статусов;
-   - категориальные data-viz-цветы (карты/графики) ДС не подчиняются.
+   - категориальные data-viz-цветы (карты/графики) ДС не подчиняются;
+   - заголовки-витрины: serif-дисплей (--ds-font-display), курсивный акцент — em;
+   - бан-лист: glassmorphism, mesh-градиенты, блобы, radius > 10px,
+     эмодзи в UI, свечения вокруг текста;
+   - движение: --ds-dur/--ds-ease, единые для всех переходов.
    ========================================================================== */
 
 /* --------------------------------------------------------------------------
-   1. Токены
+   1. Токены — A-light «Научная периодика» (дефолт)
    -------------------------------------------------------------------------- */
 :root {
-  /* -- Поверхности (тёмная тема по умолчанию) ---------------------------- */
-  --ds-bg:        #0b0e14;   /* фон страницы */
-  --ds-surface:   #12161f;   /* карточки, панели */
-  --ds-surface2:  #171c27;   /* приподнятые панели, hover-строки таблиц */
-  --ds-border:    #1f2530;   /* границы, разделители */
+  color-scheme: light;
 
-  /* -- Текст -------------------------------------------------------------- */
-  --ds-text:      #e8ecf3;   /* основной (13.9:1 на bg) */
-  --ds-muted:     #93a0b4;   /* второстепенный (7.0:1) */
-  --ds-faint:     #7e8899;   /* метаданные, подписи (4.6:1 — минимум AA) */
+  /* -- Поверхности (бумага) ----------------------------------------------- */
+  --ds-bg:        #FAF9F5;   /* фон страницы — тёплая бумага */
+  --ds-surface:   #FFFFFF;   /* карточки, панели */
+  --ds-surface2:  #F1EEE6;   /* приподнятые панели, hover-строки */
+  --ds-border:    #E3E0D5;   /* волосяные линии */
+  --ds-border-strong: #C8C4B6; /* hover-бордеры, активные рамки */
 
-  /* -- Семантика статусов (едина по всем витринам) ------------------------ */
-  --ds-red:       #f87171;   /* ошибка, критично */
-  --ds-green:     #34d399;   /* успех, OK */
-  --ds-amber:     #fbbf24;   /* внимание, предупреждение */
-  --ds-orange:    #fb923c;   /* высоко/риск */
-  --ds-blue:      #7dd3fc;   /* инфо, ссылки-данные */
-  --ds-violet:    #a78bfa;   /* категориальный (данные, не UI) */
+  /* -- Текст --------------------------------------------------------------- */
+  --ds-text:      #1C1B1A;   /* основной (16.3:1) */
+  --ds-muted:     #5B564C;   /* второстепенный (6.9:1) */
+  --ds-faint:     #6E695C;   /* метаданные, подписи (5.2:1, ≥AA везде) */
 
-  /* -- Акцент: витрина переопределяет под свой характер ------------------- */
-  --ds-accent:       #34d399;                    /* дефолт экосистемы */
-  --ds-accent-strong: #10b981;                    /* hover / активные состояния */
-  --ds-accent-ink:   #06251b;                    /* текст на заливке акцентом */
+  /* -- Семантика статусов (едина по всем темам) ----------------------------- */
+  --ds-red:       #B3261E;   /* ошибка, критично */
+  --ds-green:     #4C7A3F;   /* успех, OK */
+  --ds-amber:     #8A5A14;   /* внимание, предупреждение */
+  --ds-orange:    #B4531C;   /* высоко/риск */
+  --ds-blue:      #33608C;   /* инфо, ссылки-данные */
+  --ds-violet:    #6D4FC4;   /* категориальный (данные, не UI) */
 
-  /* -- Типографика --------------------------------------------------------- */
-  --ds-font-sans: ui-sans-serif, -apple-system, "Segoe UI", Roboto,
+  /* -- Акцент: эпидемиологический красный периодики ------------------------ */
+  --ds-accent:       #C73E1D;
+  --ds-accent-strong: #A93516;   /* hover / активные состояния */
+  --ds-accent-ink:   #FFF8F4;    /* текст на заливке акцентом (4.8:1) */
+
+  /* -- Типографика: голос системы ------------------------------------------- */
+  --ds-font-display: "Instrument Serif", Georgia, "Times New Roman", serif;
+  --ds-font-sans: "Inter", ui-sans-serif, -apple-system, "Segoe UI", Roboto,
                   "Helvetica Neue", Arial, sans-serif;
-  --ds-font-mono: ui-monospace, "SF Mono", "Cascadia Mono", Consolas,
-                  "Liberation Mono", monospace;
+  --ds-font-mono: "IBM Plex Mono", ui-monospace, "SF Mono", "Cascadia Mono",
+                  Consolas, "Liberation Mono", monospace;
   --ds-text-xs:   11px;
   --ds-text-s:    12.5px;
   --ds-text-m:    14px;
   --ds-text-l:    17px;
   --ds-text-xl:   24px;
+  --ds-text-2xl:  clamp(30px, 4.5vw, 40px);  /* заголовки-витрины, serif */
+  --ds-text-hero: clamp(38px, 6vw, 64px);    /* h1 лендинга, serif */
 
-  /* -- Спейсинг (базис 4px) ------------------------------------------------ */
+  /* -- Спейсинг (базис 4px) -------------------------------------------------- */
   --ds-space-1: 4px;
   --ds-space-2: 8px;
   --ds-space-3: 12px;
@@ -63,46 +87,90 @@
   --ds-space-6: 32px;
   --ds-space-7: 48px;
 
-  /* -- Радиусы -------------------------------------------------------------- */
-  --ds-radius-s:    6px;   /* кнопки, чипы, инпуты */
-  --ds-radius:      10px;  /* карточки, панели */
+  /* -- Радиусы (периодика: сдержанные) --------------------------------------- */
+  --ds-radius-s:    4px;   /* кнопки, чипы, инпуты */
+  --ds-radius:      8px;   /* карточки, панели */
   --ds-radius-pill: 999px;
 
-  /* -- Тени ----------------------------------------------------------------- */
-  --ds-shadow:    0 1px 2px rgba(0,0,0,.35), 0 8px 24px rgba(0,0,0,.25);
-  --ds-shadow-in: inset 0 1px 0 rgba(255,255,255,.03);
+  /* -- Тени (бумага: мягкий ambient) ----------------------------------------- */
+  --ds-shadow:    0 1px 2px rgba(28,27,26,.05), 0 10px 28px rgba(28,27,26,.06);
+  --ds-shadow-in: inset 0 1px 0 rgba(255,255,255,.6);
 
-  /* -- Фокус (a11y) --------------------------------------------------------- */
+  /* -- Движение (единая спецификация) ---------------------------------------- */
+  --ds-dur:  160ms;
+  --ds-ease: cubic-bezier(.2, 0, 0, 1);
+
+  /* -- Фокус (a11y) ------------------------------------------------------------ */
   --ds-focus: 0 0 0 2px var(--ds-bg), 0 0 0 4px var(--ds-accent);
 }
 
-/* -- Светлая тема (ветеринария в поле/на солнце — из vettools) ------------- */
-[data-theme="light"] {
-  --ds-bg:        #f2f5f4;
-  --ds-surface:   #ffffff;
-  --ds-surface2:  #e9eeec;
-  --ds-border:    #dbe3e0;
-  --ds-text:      #182420;
-  --ds-muted:     #4c5a54;
-  --ds-faint:     #63706b;
+/* --------------------------------------------------------------------------
+   1a. A-dark «Вечерний номер» — тёплый графит, кремовый текст
+   -------------------------------------------------------------------------- */
+[data-theme="dark"] {
+  color-scheme: dark;
 
-  --ds-red:       #b3261e;
-  --ds-green:     #177a3d;
-  --ds-amber:     #7a5400;
-  --ds-orange:    #a34718;
-  --ds-blue:      #1e6fa8;
-  --ds-violet:    #6d4fc4;
+  --ds-bg:        #211E19;
+  --ds-surface:   #2A2620;
+  --ds-surface2:  #34302A;
+  --ds-border:    #3F3A32;
+  --ds-border-strong: #554E44;
 
-  --ds-accent:       #0e7c66;
-  --ds-accent-strong: #0b5d4e;
-  --ds-accent-ink:   #ffffff;
+  --ds-text:      #EDE9E0;   /* 13.7:1 */
+  --ds-muted:     #B8B1A3;   /* 7.8:1 */
+  --ds-faint:     #9E9789;   /* 5.7:1 bg / 4.5:1 surface2 — AA везде */
 
-  --ds-shadow:    0 1px 2px rgba(24,36,32,.08), 0 8px 24px rgba(24,36,32,.10);
-  --ds-shadow-in: inset 0 1px 0 rgba(255,255,255,.5);
+  --ds-red:       #E87963;   /* 4.6:1 на surface2 — AA на всех поверхностях */
+  --ds-green:     #8DB96F;
+  --ds-amber:     #D9A24A;
+  --ds-orange:    #E08A4F;
+  --ds-blue:      #82A9CC;
+  --ds-violet:    #B9A5E3;
+
+  --ds-accent:       #E06A43;   /* терракота на тёмном (5.0:1) */
+  --ds-accent-strong: #EC855F;
+  --ds-accent-ink:   #1F0E07;   /* 5.6:1 на заливке */
+
+  --ds-shadow:    0 1px 2px rgba(0,0,0,.3), 0 8px 24px rgba(0,0,0,.22);
+  --ds-shadow-in: inset 0 1px 0 rgba(255,255,255,.04);
 }
 
 /* --------------------------------------------------------------------------
-   2. Базовая типографика ДС (vitrina может не подключать — только токены)
+   1b. C «Прибор» — дашборды с картой: графит + приборная бирюза
+   -------------------------------------------------------------------------- */
+[data-theme="instrument"] {
+  color-scheme: dark;
+
+  --ds-bg:        #14161A;
+  --ds-surface:   #1A1D22;
+  --ds-surface2:  #20242B;
+  --ds-border:    #262A31;
+  --ds-border-strong: #353B44;
+
+  --ds-text:      #E8EAED;   /* 15.0:1 */
+  --ds-muted:     #AAB5C0;   /* 8.7:1 */
+  --ds-faint:     #939EA9;   /* 6.6:1 bg / 5.7:1 surface2 */
+
+  --ds-red:       #E2604F;
+  --ds-green:     #57B87B;
+  --ds-amber:     #E0A438;
+  --ds-orange:    #E08A4F;
+  --ds-blue:      #6FA8DC;
+  --ds-violet:    #A78BFA;
+
+  --ds-accent:       #35C29A;   /* приборная бирюза (8.1:1) */
+  --ds-accent-strong: #4AD4AC;
+  --ds-accent-ink:   #0C1210;   /* 8.4:1 на заливке */
+
+  --ds-shadow:    0 1px 2px rgba(0,0,0,.35), 0 8px 24px rgba(0,0,0,.25);
+  --ds-shadow-in: inset 0 1px 0 rgba(255,255,255,.03);
+}
+
+/* 1c. Обратная совместимость v0.1: витрины со старым атрибутом светлой темы */
+[data-theme="light"] { color-scheme: light; }
+
+/* --------------------------------------------------------------------------
+   2. Базовая типографика ДС
    -------------------------------------------------------------------------- */
 .ds-body {
   font-family: var(--ds-font-sans);
@@ -111,6 +179,77 @@
   color: var(--ds-text);
   background: var(--ds-bg);
   -webkit-font-smoothing: antialiased;
+  font-variant-numeric: tabular-nums;   /* цифры данных не пляшут */
+}
+
+/* --------------------------------------------------------------------------
+   2a. Голос периодики: дисплей, оверлайн, сноски
+   -------------------------------------------------------------------------- */
+.ds-display {
+  font-family: var(--ds-font-display);
+  font-weight: 400;
+  font-size: var(--ds-text-2xl);
+  line-height: 1.12;
+  letter-spacing: -.01em;
+  margin: 0 0 var(--ds-space-3);
+}
+.ds-display em { color: var(--ds-accent); font-style: italic; }
+
+.ds-display--hero {
+  font-size: var(--ds-text-hero);
+  line-height: 1.05;
+  letter-spacing: -.015em;
+}
+
+/* моно-оверлайн над заголовком: «01 · Эпидситуация // Грипп птиц» */
+.ds-overline {
+  font-family: var(--ds-font-mono);
+  font-size: var(--ds-text-xs);
+  font-weight: 500;
+  letter-spacing: .14em;
+  text-transform: uppercase;
+  color: var(--ds-muted);
+  margin: 0 0 var(--ds-space-3);
+}
+.ds-overline b { color: var(--ds-accent); font-weight: 500; }
+
+/* подпись «Рис. N — ...» под иллюстрацией/графиком */
+.ds-figure { margin: 0; }
+.ds-figure__caption {
+  margin-top: var(--ds-space-2);
+  font-family: var(--ds-font-mono);
+  font-size: var(--ds-text-xs);
+  line-height: 1.5;
+  color: var(--ds-faint);
+}
+.ds-figure__caption b { color: var(--ds-accent); font-weight: 500; }
+
+/* сноска в тексте и подвал сносок */
+.ds-fn {
+  color: var(--ds-accent);
+  font-family: var(--ds-font-mono);
+  font-size: .62em;
+  vertical-align: super;
+  line-height: 0;
+  cursor: help;
+}
+.ds-fnotes {
+  font-family: var(--ds-font-mono);
+  font-size: var(--ds-text-xs);
+  line-height: 1.7;
+  color: var(--ds-faint);
+  border-top: 1px solid var(--ds-border);
+  padding-top: var(--ds-space-3);
+  max-width: 62ch;
+}
+
+/* фактура лабноты: точечная сетка для hero-зон (тон, не декор-градиент) */
+.ds-bg-dots {
+  background-image: radial-gradient(
+    circle,
+    color-mix(in srgb, var(--ds-text) 13%, transparent) 1px,
+    transparent 1.2px);
+  background-size: 22px 22px;
 }
 
 /* --------------------------------------------------------------------------
@@ -121,11 +260,11 @@
   align-items: center;
   justify-content: center;
   gap: var(--ds-space-1);
-  min-height: 38px;                 /* тач-таргет: полевой инструмент на телефоне */
+  min-height: 38px;                 /* тач-таргет: полевой инструмент */
   padding: 0 var(--ds-space-4);
-  border: 1px solid var(--ds-border);
+  border: 1px solid var(--ds-border-strong);
   border-radius: var(--ds-radius-s);
-  background: var(--ds-surface2);
+  background: var(--ds-surface);
   color: var(--ds-text);
   font: inherit;
   font-size: var(--ds-text-s);
@@ -133,9 +272,11 @@
   cursor: pointer;
   text-decoration: none;
   white-space: nowrap;
-  transition: background .15s, border-color .15s, color .15s;
+  transition: background var(--ds-dur) var(--ds-ease),
+              border-color var(--ds-dur) var(--ds-ease),
+              color var(--ds-dur) var(--ds-ease);
 }
-.ds-btn:hover { background: var(--ds-surface); border-color: var(--ds-accent); }
+.ds-btn:hover { background: var(--ds-surface2); border-color: var(--ds-text); }
 .ds-btn:focus-visible { outline: none; box-shadow: var(--ds-focus); }
 .ds-btn:active { transform: translateY(1px); }
 .ds-btn:disabled, .ds-btn[aria-disabled="true"] {
@@ -176,6 +317,14 @@
 
 .ds-btn--sm { min-height: 30px; padding: 0 var(--ds-space-3); font-size: var(--ds-text-xs); }
 
+/* квадратная иконка-кнопка (тоггл темы, соцссылки) */
+.ds-btn--icon {
+  width: 38px;
+  padding: 0;
+  color: var(--ds-muted);
+}
+.ds-btn--icon:hover { color: var(--ds-text); }
+
 /* --------------------------------------------------------------------------
    4. Карточки и панели
    -------------------------------------------------------------------------- */
@@ -184,9 +333,14 @@
   border: 1px solid var(--ds-border);
   border-radius: var(--ds-radius);
   padding: var(--ds-space-4);
+  transition: border-color var(--ds-dur) var(--ds-ease),
+              transform var(--ds-dur) var(--ds-ease),
+              box-shadow var(--ds-dur) var(--ds-ease);
 }
+.ds-card:hover { border-color: var(--ds-border-strong); }
 .ds-card--pad-l { padding: var(--ds-space-5); }
 .ds-card--flat { border-color: transparent; box-shadow: var(--ds-shadow); }
+.ds-card--flat:hover { transform: translateY(-1px); box-shadow: var(--ds-shadow); }
 
 .ds-card__title {
   font-size: var(--ds-text-m);
@@ -199,6 +353,23 @@
   margin: 0 0 var(--ds-space-3);
 }
 
+/* крупная цифра-статистика (сигнатура периодики: данные = орнамент) */
+.ds-stat { display: flex; flex-direction: column; gap: 6px; }
+.ds-stat__value {
+  font-family: var(--ds-font-display);
+  font-size: 42px;
+  line-height: 1;
+  letter-spacing: -.01em;
+}
+.ds-stat__value small { font-size: 20px; color: var(--ds-muted); font-weight: 400; }
+.ds-stat__label {
+  font-family: var(--ds-font-mono);
+  font-size: var(--ds-text-xs);
+  letter-spacing: .08em;
+  text-transform: uppercase;
+  color: var(--ds-faint);
+}
+
 /* --------------------------------------------------------------------------
    5. Чипы и бейджи
    -------------------------------------------------------------------------- */
@@ -208,9 +379,9 @@
   gap: var(--ds-space-1);
   min-height: 26px;
   padding: 0 var(--ds-space-2);
-  border: 1px solid var(--ds-border);
-  border-radius: var(--ds-radius-pill);
-  background: var(--ds-surface2);
+  border: 1px solid var(--ds-border-strong);
+  border-radius: var(--ds-radius-s);      /* периодика: чипы не пилюли */
+  background: transparent;
   color: var(--ds-muted);
   font-size: var(--ds-text-xs);
   font-weight: 600;
@@ -218,8 +389,11 @@
   white-space: nowrap;
   text-decoration: none;
   cursor: default;
+  font-family: var(--ds-font-mono);
+  transition: border-color var(--ds-dur) var(--ds-ease),
+              color var(--ds-dur) var(--ds-ease);
 }
-a.ds-chip:hover { border-color: var(--ds-accent); color: var(--ds-text); }
+a.ds-chip:hover { border-color: var(--ds-text); color: var(--ds-text); }
 
 .ds-chip--red    { color: var(--ds-red);    border-color: color-mix(in srgb, var(--ds-red)    35%, transparent); }
 .ds-chip--green  { color: var(--ds-green);  border-color: color-mix(in srgb, var(--ds-green)  35%, transparent); }
@@ -227,7 +401,7 @@ a.ds-chip:hover { border-color: var(--ds-accent); color: var(--ds-text); }
 .ds-chip--orange { color: var(--ds-orange); border-color: color-mix(in srgb, var(--ds-orange) 35%, transparent); }
 .ds-chip--blue   { color: var(--ds-blue);   border-color: color-mix(in srgb, var(--ds-blue)   35%, transparent); }
 
-/* компактный бейдж (заливка) */
+/* компактный бейдж (заливка тоном статуса) */
 .ds-badge {
   display: inline-flex;
   align-items: center;
@@ -237,12 +411,12 @@ a.ds-chip:hover { border-color: var(--ds-accent); color: var(--ds-text); }
   font-size: var(--ds-text-xs);
   font-weight: 700;
   line-height: 1.4;
-  background: color-mix(in srgb, var(--ds-accent) 15%, transparent);
+  background: color-mix(in srgb, var(--ds-accent) 12%, transparent);
   color: var(--ds-accent);
 }
-.ds-badge--red    { background: color-mix(in srgb, var(--ds-red)    15%, transparent);    color: var(--ds-red); }
-.ds-badge--green  { background: color-mix(in srgb, var(--ds-green)  15%, transparent);  color: var(--ds-green); }
-.ds-badge--amber  { background: color-mix(in srgb, var(--ds-amber)  15%, transparent);  color: var(--ds-amber); }
+.ds-badge--red    { background: color-mix(in srgb, var(--ds-red)    12%, transparent);    color: var(--ds-red); }
+.ds-badge--green  { background: color-mix(in srgb, var(--ds-green)  12%, transparent);  color: var(--ds-green); }
+.ds-badge--amber  { background: color-mix(in srgb, var(--ds-amber)  12%, transparent);  color: var(--ds-amber); }
 
 /* статусная точка */
 .ds-dot {
@@ -271,14 +445,14 @@ a.ds-chip:hover { border-color: var(--ds-accent); color: var(--ds-text); }
   font-size: var(--ds-text-s);
   color: var(--ds-text);
   background: var(--ds-surface);
-  border: 1px solid var(--ds-border);
+  border: 1px solid var(--ds-border-strong);
   border-radius: var(--ds-radius-s);
   padding: var(--ds-space-2) var(--ds-space-3);
   min-height: 38px;
-  transition: border-color .15s;
+  transition: border-color var(--ds-dur) var(--ds-ease);
 }
-.ds-input::placeholder, .ds-textarea::placeholder { color: var(--ds-faint); }
-.ds-input:hover, .ds-select:hover, .ds-textarea:hover { border-color: color-mix(in srgb, var(--ds-muted) 40%, transparent); }
+.ds-input::placeholder, .ds-textarea::placeholder { color: var(--ds-faint); opacity: 1; }
+.ds-input:hover, .ds-select:hover, .ds-textarea:hover { border-color: var(--ds-muted); }
 .ds-input:focus, .ds-select:focus, .ds-textarea:focus {
   outline: none;
   border-color: var(--ds-accent);
@@ -287,9 +461,15 @@ a.ds-chip:hover { border-color: var(--ds-accent); color: var(--ds-text); }
 .ds-select {
   appearance: none;
   padding-right: var(--ds-space-6);
-  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%237e8899' stroke-width='2' stroke-linecap='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E");
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%236E695C' stroke-width='2' stroke-linecap='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E");
   background-repeat: no-repeat;
   background-position: right var(--ds-space-3) center;
+}
+[data-theme="dark"] .ds-select {
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%239E9789' stroke-width='2' stroke-linecap='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E");
+}
+[data-theme="instrument"] .ds-select {
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%23939EA9' stroke-width='2' stroke-linecap='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E");
 }
 
 .ds-kbd {
@@ -304,7 +484,7 @@ a.ds-chip:hover { border-color: var(--ds-accent); color: var(--ds-text); }
 }
 
 /* --------------------------------------------------------------------------
-   7. Таблицы (ленты данных)
+   7. Таблицы (ленты данных — волосяные линии, не зебра)
    -------------------------------------------------------------------------- */
 .ds-table {
   width: 100%;
@@ -313,25 +493,27 @@ a.ds-chip:hover { border-color: var(--ds-accent); color: var(--ds-text); }
 }
 .ds-table th {
   text-align: left;
+  font-family: var(--ds-font-mono);
   font-size: var(--ds-text-xs);
-  font-weight: 700;
+  font-weight: 500;
   text-transform: uppercase;
-  letter-spacing: .06em;
+  letter-spacing: .1em;
   color: var(--ds-faint);
   padding: var(--ds-space-2) var(--ds-space-3);
-  border-bottom: 1px solid var(--ds-border);
+  border-bottom: 1px solid var(--ds-border-strong);
 }
 .ds-table td {
   padding: var(--ds-space-2) var(--ds-space-3);
-  border-bottom: 1px solid color-mix(in srgb, var(--ds-border) 55%, transparent);
+  border-bottom: 1px solid var(--ds-border);
   vertical-align: top;
 }
 .ds-table tbody tr:last-child td { border-bottom: none; }
+.ds-table tbody tr { transition: background var(--ds-dur) var(--ds-ease); }
 .ds-table tbody tr:hover { background: var(--ds-surface2); }
 .ds-table--wrap td, .ds-table--wrap th { overflow-wrap: anywhere; }
 
 /* --------------------------------------------------------------------------
-   8. Шапка и подвал экосистемы (общий паттерн витрин)
+   8. Шапка и подвал экосистемы
    -------------------------------------------------------------------------- */
 .ds-header {
   position: sticky;
@@ -342,8 +524,8 @@ a.ds-chip:hover { border-color: var(--ds-accent); color: var(--ds-text); }
   gap: var(--ds-space-3);
   height: 52px;
   padding: 0 var(--ds-space-4);
-  background: color-mix(in srgb, var(--ds-bg) 82%, transparent);
-  backdrop-filter: blur(10px);
+  background: color-mix(in srgb, var(--ds-bg) 86%, transparent);
+  backdrop-filter: saturate(1.4) blur(10px);
   border-bottom: 1px solid var(--ds-border);
 }
 .ds-header__brand {
@@ -362,7 +544,10 @@ a.ds-chip:hover { border-color: var(--ds-accent); color: var(--ds-text); }
   margin-top: var(--ds-space-7);
   padding: var(--ds-space-5) var(--ds-space-4) var(--ds-space-4);
   border-top: 1px solid var(--ds-border);
+  font-family: var(--ds-font-mono);
   font-size: var(--ds-text-xs);
+  letter-spacing: .06em;
+  text-transform: uppercase;
   color: var(--ds-faint);
   text-align: center;
 }
@@ -379,17 +564,20 @@ a.ds-chip:hover { border-color: var(--ds-accent); color: var(--ds-text); }
 .ds-warn  { color: var(--ds-amber); }
 
 .ds-link {
-  color: var(--ds-accent);
-  text-decoration: none;
-  border-bottom: 1px solid color-mix(in srgb, var(--ds-accent) 30%, transparent);
+  color: var(--ds-text);
+  text-decoration: underline;
+  text-decoration-color: var(--ds-accent);
+  text-decoration-thickness: 1px;
+  text-underline-offset: 3px;
 }
-.ds-link:hover { color: var(--ds-accent-strong); border-bottom-color: var(--ds-accent-strong); }
+.ds-link:hover { color: var(--ds-accent); }
 
 /* абзац-пояснение под заголовком секции */
 .ds-lede {
-  font-size: var(--ds-text-s);
+  font-size: var(--ds-text-l);
+  line-height: 1.6;
   color: var(--ds-muted);
-  max-width: 68ch;
+  max-width: 62ch;
   margin: 0 0 var(--ds-space-4);
 }
 
@@ -409,4 +597,20 @@ a.ds-chip:hover { border-color: var(--ds-accent); color: var(--ds-text); }
   border-color: color-mix(in srgb, var(--ds-blue) 35%, transparent);
   background: color-mix(in srgb, var(--ds-blue) 8%, transparent);
   color: var(--ds-blue);
+}
+
+/* --------------------------------------------------------------------------
+   10. Тема-тоггл (паттерн витрин: light <-> dark)
+   -------------------------------------------------------------------------- */
+.ds-theme-toggle { display: inline-flex; }
+.ds-theme-toggle svg { width: 16px; height: 16px; }
+[data-theme="dark"] .ds-theme-toggle .ds-theme-toggle__sun,
+[data-theme="instrument"] .ds-theme-toggle .ds-theme-toggle__sun { display: none; }
+.ds-theme-toggle .ds-theme-toggle__moon { display: none; }
+[data-theme="dark"] .ds-theme-toggle .ds-theme-toggle__moon,
+[data-theme="instrument"] .ds-theme-toggle .ds-theme-toggle__moon { display: block; }
+
+@media (prefers-reduced-motion: reduce) {
+  .ds-btn, .ds-card, .ds-chip, .ds-table tbody tr { transition: none; }
+  .ds-btn:active { transform: none; }
 }
