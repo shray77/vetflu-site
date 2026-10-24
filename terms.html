@@ -66,6 +66,10 @@
   .foot a:hover { color: var(--accent); }
   .foot .legal { color: var(--warn); }
 </style>
+<style>/* vet-ds v2.1: тоггл темы с подписью — виден среди метаданных */
+  .theme-pill { min-height: 34px; padding: 0 13px; font: 500 12px var(--ds-font-mono); }
+  .theme-pill svg { color: var(--ds-accent); }
+</style>
 </head>
 <body>
 <nav class="hub">
@@ -84,10 +88,12 @@
         <p>Предиктивные окна риска заноса ВПГП — миграционная фаза пролёта по флайвеям РФ</p>
       </div>
     </div>
-    <button class="ds-btn ds-btn--icon ds-theme-toggle" id="themeToggle" aria-label="Переключить тему" title="Переключить тему">
+    <button class="ds-btn ds-btn--sm ds-theme-toggle ds-theme-toggle--labeled theme-pill" id="themeToggle" aria-label="Переключить тему" title="Переключить тему">
       <svg class="ds-theme-toggle__sun" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><circle cx="12" cy="12" r="4"/><path d="M12 2v2m0 16v2M4.9 4.9l1.4 1.4m11.4 11.4 1.4 1.4M2 12h2m16 0h2M4.9 19.1l1.4-1.4m11.4-11.4 1.4-1.4"/></svg>
       <svg class="ds-theme-toggle__moon" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3a6 6 0 0 0 9 9 9 9 0 1 1-9-9Z"/></svg>
-    </button>
+    
+        <span class="ds-theme-toggle__label" aria-hidden="true"></span>
+      </button>
   </div>
 </header>
 

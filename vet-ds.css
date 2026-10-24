@@ -1,6 +1,8 @@
 /* ==========================================================================
-   vet-ds v2.0 «Научная периодика» — дизайн-система ветеринарной экосистемы
+   vet-ds v2.1 «Научная периодика» — дизайн-система ветеринарной экосистемы
    --------------------------------------------------------------------------
+   v2.1: редакционный слой — .ds-rule-double, .ds-dropcap, .ds-spark,
+         .ds-overline--rule, .ds-masthead-meta, .ds-theme-toggle--labeled
    Один файл: токены + компоненты. Подключается витриной как копия
    (репо приватное — CDN недоступен) или git submodule.
 
@@ -250,6 +252,58 @@
     color-mix(in srgb, var(--ds-text) 13%, transparent) 1px,
     transparent 1.2px);
   background-size: 22px 22px;
+}
+
+/* --------------------------------------------------------------------------
+   2b. Редакционный слой v2.1 — мастхед, буквица, спарклайн, двойные линейки
+   -------------------------------------------------------------------------- */
+/* двойная линейка периодики: толстая линия + тонкая (пустой div-разделитель) */
+.ds-rule-double {
+  border: none;
+  border-top: 2px solid var(--ds-text);
+  padding-top: 2px;
+  margin: var(--ds-space-4) 0;
+}
+.ds-rule-double::after { content: ""; display: block; border-top: 1px solid var(--ds-border-strong); }
+
+/* буквица первого абзаца (лид номера) */
+.ds-dropcap::first-letter {
+  float: left;
+  font-family: var(--ds-font-display);
+  font-size: 3em;
+  line-height: .82;
+  padding: .05em .12em 0 0;
+  color: var(--ds-accent);
+}
+
+/* спарклайн: орнамент = данные (svg viewBox="0 0 100 30" preserveAspectRatio="none") */
+.ds-spark { display: block; width: 100%; height: 30px; }
+.ds-spark__line {
+  fill: none;
+  stroke: var(--ds-accent);
+  stroke-width: 1.75;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  vector-effect: non-scaling-stroke;
+}
+.ds-spark__area { fill: color-mix(in srgb, var(--ds-accent) 10%, transparent); }
+.ds-spark__end { fill: var(--ds-accent); }
+
+/* оверлайн-разделитель секции: «№ 128 · 24 октября» + линейка до края */
+.ds-overline--rule { display: flex; align-items: center; gap: var(--ds-space-3); }
+.ds-overline--rule::after { content: ""; flex: 1; height: 1px; background: var(--ds-border-strong); }
+
+/* служебная строка мастхеда («газетная» вёрстка шапки) */
+.ds-masthead-meta {
+  display: flex;
+  justify-content: space-between;
+  gap: var(--ds-space-3);
+  flex-wrap: wrap;
+  font-family: var(--ds-font-mono);
+  font-size: var(--ds-text-xs);
+  letter-spacing: .08em;
+  text-transform: uppercase;
+  color: var(--ds-faint);
 }
 
 /* --------------------------------------------------------------------------
@@ -609,6 +663,24 @@ a.ds-chip:hover { border-color: var(--ds-text); color: var(--ds-text); }
 .ds-theme-toggle .ds-theme-toggle__moon { display: none; }
 [data-theme="dark"] .ds-theme-toggle .ds-theme-toggle__moon,
 [data-theme="instrument"] .ds-theme-toggle .ds-theme-toggle__moon { display: block; }
+
+/* вариант с подписью (юзер-фидбек: иконка-одиночка терялась среди метаданных):
+   иконка и слово = ЦЕЛЬ переключения — [☾ тёмная] на светлом, [☀ светлая] на тёмном */
+.ds-theme-toggle--labeled .ds-theme-toggle__sun { display: none; }
+[data-theme="dark"] .ds-theme-toggle--labeled .ds-theme-toggle__sun,
+[data-theme="instrument"] .ds-theme-toggle--labeled .ds-theme-toggle__sun { display: block; }
+.ds-theme-toggle--labeled .ds-theme-toggle__moon { display: block; }
+[data-theme="dark"] .ds-theme-toggle--labeled .ds-theme-toggle__moon,
+[data-theme="instrument"] .ds-theme-toggle--labeled .ds-theme-toggle__moon { display: none; }
+.ds-theme-toggle--labeled .ds-theme-toggle__label {
+  font-family: var(--ds-font-mono);
+  font-size: var(--ds-text-xs);
+  font-weight: 500;
+  letter-spacing: .02em;
+}
+.ds-theme-toggle--labeled .ds-theme-toggle__label::after { content: "тёмная"; }
+[data-theme="dark"] .ds-theme-toggle--labeled .ds-theme-toggle__label::after,
+[data-theme="instrument"] .ds-theme-toggle--labeled .ds-theme-toggle__label::after { content: "светлая"; }
 
 @media (prefers-reduced-motion: reduce) {
   .ds-btn, .ds-card, .ds-chip, .ds-table tbody tr { transition: none; }
