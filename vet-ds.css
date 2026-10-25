@@ -1,10 +1,15 @@
 /* ==========================================================================
-   vet-ds v2.1.1 «Научная периодика» — дизайн-система ветеринарной экосистемы
+   vet-ds v2.2 «Научная периодика» — дизайн-система ветеринарной экосистемы
    --------------------------------------------------------------------------
    v2.1:  редакционный слой — .ds-rule-double, .ds-dropcap, .ds-spark,
           .ds-overline--rule, .ds-masthead-meta, .ds-theme-toggle--labeled
    v2.1.1: токен --ds-rule для «чернильных» линеек (тёмная тема больше не
           красит их текстом = «белые полосы»); .ds-rule-double на токене
+   v2.2:  мастхед-паттерн витрин — .ds-masthead (шапка-«полоса периодики»
+          c брендом/подзаголовком/боком), .ds-hub (навигация экосистемы
+          пилюлями), .ds-footer--meta (левый многострочный подвал витрины).
+          Закрывает последний открытый пункт роадмапа v2.0. Эталонная
+          адопция: vetflu (Task 154).
    Один файл: токены + компоненты. Подключается витриной как копия
    (репо приватное — CDN недоступен) или git submodule.
 
@@ -611,6 +616,94 @@ a.ds-chip:hover { border-color: var(--ds-text); color: var(--ds-text); }
   text-align: center;
 }
 .ds-footer a { color: var(--ds-muted); }
+
+/* --- v2.2: мастхед витрины-«периодики» (заголовок полосы, не липкий) ----
+   .ds-header — компактный липкий бар приложений; .ds-masthead — редакционный
+   двойник для витрин: мета-строка (.ds-masthead-meta, v2.1) + бренд-ряд
+   (лого × заголовок-дисплей × подзаголовок) + бок (live-статус, тоггл).
+   Разметка:
+     <header class="ds-masthead">
+       <div class="ds-masthead-meta">…</div>          <!-- опционально -->
+       <div class="ds-masthead__row">                 <!-- .wrap у витрины -->
+         <div class="ds-masthead__brand">
+           <div class="ds-masthead__logo">svg</div>
+           <div>
+             <h1 class="ds-masthead__title">…</h1>
+             <p class="ds-masthead__sub">…</p>
+           </div>
+         </div>
+         <div class="ds-masthead__side">live · toggle</div>
+       </div>
+     </header>
+     <div class="ds-rule-double"></div>               <!-- низ мастхеда -->
+   -------------------------------------------------------------------------- */
+.ds-masthead { border-bottom: 1px solid var(--ds-border); padding: var(--ds-space-4) 0 var(--ds-space-4); }
+.ds-masthead__row {
+  display: flex; align-items: center; justify-content: space-between;
+  gap: var(--ds-space-4); flex-wrap: wrap;
+}
+.ds-masthead__brand { display: flex; align-items: center; gap: var(--ds-space-4); }
+.ds-masthead__logo {
+  width: 52px; height: 52px; flex: none;
+  display: grid; place-items: center;
+  color: var(--ds-accent);
+  background: color-mix(in srgb, var(--ds-accent) 12%, transparent);
+  border: 1px solid color-mix(in srgb, var(--ds-accent) 35%, transparent);
+  border-radius: var(--ds-radius);
+}
+.ds-masthead__logo svg { width: 28px; height: 28px; }
+.ds-masthead__title {
+  font-family: var(--ds-font-display);
+  font-weight: 400;
+  font-size: 29px;
+  letter-spacing: -.01em;
+  line-height: 1.15;
+  margin: 0;
+  color: var(--ds-text);
+}
+.ds-masthead__sub { margin: 2px 0 0; color: var(--ds-muted); font-size: 14px; max-width: 60ch; }
+.ds-masthead__sub--display { font: italic 400 16px/1.35 var(--ds-font-display); max-width: 48ch; }
+.ds-masthead__side { display: flex; align-items: center; gap: var(--ds-space-2); flex-wrap: wrap; }
+
+/* v2.2: ряд навигации экосистемы (хаб-ссылки пилюлями). Активная — aria-current
+   или класс .on (обратная совместимость витрин). */
+.ds-hub {
+  display: flex; gap: 6px; flex-wrap: wrap;
+  font-family: var(--ds-font-mono);
+  font-size: 12.5px;
+}
+.ds-hub a {
+  color: var(--ds-muted);
+  text-decoration: none;
+  border: 1px solid var(--ds-border);
+  background: var(--ds-surface);
+  border-radius: var(--ds-radius-pill);
+  padding: 5px 12px;
+  transition: color var(--ds-dur) var(--ds-ease), border-color var(--ds-dur) var(--ds-ease),
+              background var(--ds-dur) var(--ds-ease);
+}
+.ds-hub a:hover {
+  color: var(--ds-text);
+  border-color: color-mix(in srgb, var(--ds-muted) 40%, transparent);
+}
+.ds-hub a.on, .ds-hub a[aria-current="page"] {
+  color: var(--ds-accent);
+  border-color: color-mix(in srgb, var(--ds-accent) 45%, transparent);
+  background: color-mix(in srgb, var(--ds-accent) 12%, transparent);
+}
+
+/* v2.2: подвал витрины с легал/данными-строками — левый, без капса
+   (редакционный колофон). База .ds-footer остаётся для центрированных. */
+.ds-footer--meta {
+  display: flex; flex-direction: column;
+  gap: var(--ds-space-2);
+  text-align: left;
+  text-transform: none;
+  letter-spacing: .02em;
+}
+.ds-footer--meta .ds-footer__legal { color: var(--ds-faint); }
+.ds-footer--meta a { text-decoration: none; }
+.ds-footer--meta a:hover { color: var(--ds-text); text-decoration: underline; }
 
 /* --------------------------------------------------------------------------
    9. Утилиты типографики
