@@ -34,6 +34,12 @@
           print-переанкорки: section[data-theme="form"] в селекторе блока 20 —
           §25 ниже по файлу побеждал равную специфичность, и стол печатался
           бежевым при включённых «фонах печати» (нашёл print-гейт vettools).
+   v2.3.3: гейт §1.4.11 стал законом ядра (contrast_v2.py: border-strong ×
+          3 поверхности ≥3:1, rule × bg ≥3:1, --ds-border исключён как
+          декор) — и сразу поймал: root #C8C4B6 = 1.51–1.75, dark #554E44
+          = 1.60–2.02, instrument #353B44 = 1.38–1.60. Фикс: border-strong
+          #857F6E в A-light/A-dark (сепия-тушь единая с формуляром, худшая
+          3.28:1) и #6A7590 в C (сталь, худшая 3.38:1). Task 175.
    Один файл: токены + компоненты. Подключается витриной как копия
    (репо приватное — CDN недоступен) или git submodule.
 
@@ -79,8 +85,9 @@
   --ds-bg:        #FAF9F5;   /* фон страницы — тёплая бумага */
   --ds-surface:   #FFFFFF;   /* карточки, панели */
   --ds-surface2:  #F1EEE6;   /* приподнятые панели, hover-строки */
-  --ds-border:    #E3E0D5;   /* волосяные линии */
-  --ds-border-strong: #C8C4B6; /* hover-бордеры, активные рамки */
+  --ds-border:    #E3E0D5;   /* волосяные линии (декоративные разделители — вне §1.4.11) */
+  --ds-border-strong: #857F6E; /* рамки инпутов/кнопок/чипов: WCAG 1.4.11 ≥3:1 — та же сепия,
+                              что у формуляра с v2.3.2 (было #C8C4B6 = 1.51–1.75:1 — слепая зона) */
   --ds-rule:      #1C1B1A;   /* «чернильные» линейки редакционного слоя (мастхед, № выпусков) */
 
   /* -- Текст --------------------------------------------------------------- */
@@ -151,7 +158,8 @@
   --ds-surface:   #2A2620;
   --ds-surface2:  #34302A;
   --ds-border:    #3F3A32;
-  --ds-border-strong: #554E44;
+  --ds-border-strong: #857F6E; /* v2.3.3: ≥3:1 на худшей поверхности #34302A (3.28) — единая
+                              «сепия-тушь» сильных рамок в свете и ночи (было #554E44 = 1.60–2.02) */
   --ds-rule:      #6E685C;   /* ~3:1 на bg: линейка читается, но не «белая полоса» (НЕ --ds-text!) */
 
   --ds-text:      #EDE9E0;   /* 13.7:1 */
@@ -183,7 +191,8 @@
   --ds-surface:   #1A1D22;
   --ds-surface2:  #20242B;
   --ds-border:    #262A31;
-  --ds-border-strong: #353B44;
+  --ds-border-strong: #6A7590; /* v2.3.3: ≥3:1 на худшей поверхности #20242B (3.38) — сталь
+                              светлее графита, аффорданс рамок (было #353B44 = 1.38–1.60) */
   --ds-rule:      #5A6472;   /* ~3:1 на bg — приборная линейка без неона */
 
   --ds-text:      #E8EAED;   /* 15.0:1 */
@@ -927,8 +936,9 @@ a.ds-chip:hover { border-color: var(--ds-text); color: var(--ds-text); }
 /* Карточки-ссылки — focus-visible; :focus-within убран (урок exp-form): иначе
    фокус в инпуте обводит рамкой всю карточку — шум вместо навигации. */
 .ds-tabs :focus-visible, .ds-page-btn:focus-visible, .ds-btn:focus-visible,
-.ds-input:focus-visible, .ds-select:focus-visible, .ds-chip:focus-visible,
-.ds-link:focus-visible, a.ds-card:focus-visible, .ds-card[tabindex]:focus-visible {
+.ds-input:focus-visible, .ds-select:focus-visible, .ds-textarea:focus-visible,
+.ds-chip:focus-visible, .ds-link:focus-visible, a.ds-card:focus-visible,
+.ds-card[tabindex]:focus-visible {
   outline: 2px solid var(--ds-accent);
   outline-offset: 2px;
 }
