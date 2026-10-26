@@ -1,5 +1,5 @@
 /* ==========================================================================
-   vet-ds v2.2 «Научная периодика» — дизайн-система ветеринарной экосистемы
+   vet-ds v2.3 «Научная периодика» — дизайн-система ветеринарной экосистемы
    --------------------------------------------------------------------------
    v2.1:  редакционный слой — .ds-rule-double, .ds-dropcap, .ds-spark,
           .ds-overline--rule, .ds-masthead-meta, .ds-theme-toggle--labeled
@@ -10,6 +10,19 @@
           пилюлями), .ds-footer--meta (левый многострочный подвал витрины).
           Закрывает последний открытый пункт роадмапа v2.0. Эталонная
           адопция: vetflu (Task 154).
+   v2.3:  голоса по разделу + платформенный слой. Голос B «Формуляр»
+          (data-theme="form"), компоненты периодики (.ds-tabs,
+          .ds-pagination, .ds-delta--good/--bad, .ds-skeleton, .ds-empty,
+          .ds-pullquote, .ds-ba), Prata-фолбэк кириллицы, :focus-visible,
+          prefers-reduced-motion, print всех голосов. Платформа (блоки
+          26-29): View Transitions, сноски-поповеры, прогресс чтения,
+          формулярная валидация без JS. Повышено из v2.3-draft: Task 161
+          (апрув+докрутки), 162 (лаборатория платформы), 163 (вес/слоп),
+          164 (повышение). Гейт contrast_v2.py зелёный во всех 5 темах.
+   v2.3.1: мобильная компакция периодики (блок 30) — мастхед/хаб/колофон
+          на 640px: лого 38px, кегли вниз, хаб одним скроллящимся рядом,
+          safe-area-inset-bottom у подвала. Повод: голос владельца —
+          «на телефоне верх занимает большую часть экрана» (Task 165).
    Один файл: токены + компоненты. Подключается витриной как копия
    (репо приватное — CDN недоступен) или git submodule.
 
@@ -23,6 +36,9 @@
      [data-theme="dark"]      — A-dark «Вечерний номер» (тёплый графит)
      [data-theme="instrument"]— C «Прибор» (графит + бирюза) — дашборды с картой
      [data-theme="light"]     — алиас A-light (обратная совместимость v0.1)
+     [data-theme="form"]      — B «Формуляр» (голос разделов «действуешь»):
+                                 секция на странице A — токены производные,
+                                 плотность рабочего стола
 
    Витрина-характер: :root { --ds-accent: <светлое значение>; }
    [data-theme="dark"] { --ds-accent: <тёмное значение>; } — все производные
@@ -63,9 +79,9 @@
 
   /* -- Семантика статусов (едина по всем темам) ----------------------------- */
   --ds-red:       #B3261E;   /* ошибка, критично */
-  --ds-green:     #4C7A3F;   /* успех, OK */
+  --ds-green:     #47753A;   /* успех, OK (v2.3: +AA на surface2, было #4C7A3F 4.35) */
   --ds-amber:     #8A5A14;   /* внимание, предупреждение */
-  --ds-orange:    #B4531C;   /* высоко/риск */
+  --ds-orange:    #AC4E18;   /* высоко/риск (v2.3: +AA на surface2, было #B4531C 4.32) */
   --ds-blue:      #33608C;   /* инфо, ссылки-данные */
   --ds-violet:    #6D4FC4;   /* категориальный (данные, не UI) */
 
@@ -163,7 +179,7 @@
   --ds-muted:     #AAB5C0;   /* 8.7:1 */
   --ds-faint:     #939EA9;   /* 6.6:1 bg / 5.7:1 surface2 */
 
-  --ds-red:       #E2604F;
+  --ds-red:       #E46655;   /* v2.3: +AA на surface2 (было #E2604F 4.46) */
   --ds-green:     #57B87B;
   --ds-amber:     #E0A438;
   --ds-orange:    #E08A4F;
@@ -783,4 +799,437 @@ a.ds-chip:hover { border-color: var(--ds-text); color: var(--ds-text); }
 @media (prefers-reduced-motion: reduce) {
   .ds-btn, .ds-card, .ds-chip, .ds-table tbody tr { transition: none; }
   .ds-btn:active { transform: none; }
+}
+
+/* ==========================================================================
+   v2.3 — слой периодики и платформы (быв. v2.3-draft, блоки 12–29)
+   ========================================================================== */
+
+/* -- 12. Tabs (периодика: подчёркнутая вкладка, не пилюля) ------------------ */
+.ds-tabs {
+  display: flex; gap: var(--ds-space-4);
+  border-bottom: 1px solid var(--ds-border);
+  overflow-x: auto; scrollbar-width: none;
+}
+.ds-tabs::-webkit-scrollbar { display: none; }
+.ds-tab {
+  appearance: none; background: none; border: none; cursor: pointer;
+  font: 500 var(--ds-text-m)/1.3 var(--ds-font-sans);
+  color: var(--ds-muted);
+  padding: var(--ds-space-2) 2px calc(var(--ds-space-2) + 1px);
+  border-bottom: 2px solid transparent;
+  margin-bottom: -1px;
+  white-space: nowrap;
+  transition: color var(--ds-dur) var(--ds-ease),
+              border-color var(--ds-dur) var(--ds-ease);
+}
+.ds-tab:hover { color: var(--ds-text); }
+.ds-tab[aria-selected="true"], .ds-tab.on {
+  color: var(--ds-text); border-bottom-color: var(--ds-accent); font-weight: 600;
+}
+
+/* -- 13. Pagination ---------------------------------------------------------- */
+.ds-pagination {
+  display: flex; align-items: center; gap: var(--ds-space-2);
+  font: var(--ds-text-s)/1 var(--ds-font-sans); color: var(--ds-muted);
+}
+.ds-page-btn {
+  appearance: none; cursor: pointer;
+  border: 1px solid var(--ds-border); background: var(--ds-surface);
+  border-radius: var(--ds-radius-s); color: var(--ds-text);
+  font: 500 var(--ds-text-m)/1 var(--ds-font-sans);
+  padding: 6px 10px; min-width: 32px; text-align: center;
+  transition: background var(--ds-dur) var(--ds-ease),
+              border-color var(--ds-dur) var(--ds-ease);
+}
+.ds-page-btn:hover:not(:disabled) { border-color: var(--ds-border-strong); background: var(--ds-surface2); }
+.ds-page-btn[aria-current="page"], .ds-page-btn.on {
+  background: var(--ds-accent); border-color: var(--ds-accent);
+  color: var(--ds-accent-ink); font-weight: 600;
+}
+.ds-page-btn:disabled { opacity: .4; cursor: default; }
+
+/* -- 14. Delta — стрелки типографикой, направление и цвет независимы --------- */
+.ds-delta {
+  display: inline-flex; align-items: baseline; gap: 2px;
+  font: 600 var(--ds-text-s)/1 var(--ds-font-mono);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+.ds-delta::before { font-weight: 700; }
+.ds-delta--up   { color: var(--ds-green); }
+.ds-delta--up::before   { content: "\2191"; }
+.ds-delta--down { color: var(--ds-red); }
+.ds-delta--down::before { content: "\2193"; }
+.ds-delta--flat { color: var(--ds-faint); }
+.ds-delta--flat::before { content: "\2194"; }
+/* Семантика ≠ направление («вспышек −2» — вниз, но хорошо). Цветовые модификаторы
+   идут ПОСЛЕ направления и перебивают его: .ds-delta--down.ds-delta--good — вниз зелёным.
+   Порядок в файле = специфичность, inline-стили больше не нужны. */
+.ds-delta--good { color: var(--ds-green); }
+.ds-delta--bad  { color: var(--ds-red); }
+
+/* -- 15. Skeleton ------------------------------------------------------------ */
+.ds-skeleton {
+  border-radius: var(--ds-radius-s);
+  background:
+    linear-gradient(100deg, transparent 30%, var(--ds-surface2) 50%, transparent 70%),
+    var(--ds-border);
+  background-size: 200% 100%, 100% 100%;
+  background-position: 100% 0, 0 0;
+  animation: ds-skeleton 1.4s var(--ds-ease) infinite;
+  min-height: 1em;
+}
+@keyframes ds-skeleton {
+  from { background-position: 100% 0, 0 0; }
+  to   { background-position: -60% 0, 0 0; }
+}
+.ds-skeleton--text  { height: 12px; margin: 6px 0; }
+.ds-skeleton--title { height: 24px; width: 60%; margin: 8px 0; }
+.ds-skeleton--block { height: 120px; }
+
+/* -- 16. Empty state ---------------------------------------------------------- */
+.ds-empty {
+  text-align: center; padding: var(--ds-space-7) var(--ds-space-5);
+  border: 1px dashed var(--ds-border-strong); border-radius: var(--ds-radius);
+  color: var(--ds-muted);
+}
+.ds-empty__glyph { font-size: 28px; line-height: 1; margin-bottom: var(--ds-space-2); color: var(--ds-faint); }
+.ds-empty__title { font: 600 var(--ds-text-l)/1.3 var(--ds-font-sans); color: var(--ds-text); margin: 0 0 var(--ds-space-1); }
+.ds-empty__hint  { font: var(--ds-text-m)/1.5 var(--ds-font-sans); margin: 0 auto var(--ds-space-4); max-width: 46ch; }
+
+/* -- 17. Pullquote ------------------------------------------------------------ */
+.ds-pullquote {
+  margin: var(--ds-space-6) 0;
+  padding-left: var(--ds-space-5);
+  border-left: 3px solid var(--ds-accent);
+  font: italic var(--ds-text-xl)/1.4 var(--ds-font-display);
+  color: var(--ds-text);
+}
+.ds-pullquote cite {
+  display: block; margin-top: var(--ds-space-2);
+  font: 500 var(--ds-text-s)/1.4 var(--ds-font-sans);
+  font-style: normal; color: var(--ds-faint);
+}
+
+/* -- 18. Фокус — чернильный контур -------------------------------------------- */
+/* Карточки-ссылки — focus-visible; :focus-within убран (урок exp-form): иначе
+   фокус в инпуте обводит рамкой всю карточку — шум вместо навигации. */
+.ds-tabs :focus-visible, .ds-page-btn:focus-visible, .ds-btn:focus-visible,
+.ds-input:focus-visible, .ds-select:focus-visible, .ds-chip:focus-visible,
+.ds-link:focus-visible, a.ds-card:focus-visible, .ds-card[tabindex]:focus-visible {
+  outline: 2px solid var(--ds-accent);
+  outline-offset: 2px;
+}
+
+/* -- 19. Движение только служебное -------------------------------------------- */
+@media (prefers-reduced-motion: reduce) {
+  .ds-skeleton { animation: none; }
+  *, *::before, *::after {
+    animation-duration: .01ms !important;
+    transition-duration: .01ms !important;
+  }
+}
+
+/* -- 20. Печать ---------------------------------------------------------------- */
+@media print {
+  /* все голоса переанкориваются на бумагу, включая form и light (иначе формуляр
+     печатался бы с бежевой заливкой при включённых «фонах печати») */
+  :root, [data-theme="light"], [data-theme="dark"], [data-theme="instrument"],
+  [data-theme="form"] {
+    color-scheme: light;
+    --ds-bg: #FFFFFF; --ds-surface: #FFFFFF; --ds-surface2: #F5F4F0;
+    --ds-border: #CCCCCC; --ds-border-strong: #999999; --ds-rule: #1C1B1A;
+    --ds-text: #1C1B1A; --ds-muted: #444444; --ds-faint: #555555;
+    --ds-shadow: none; --ds-accent: #1C1B1A; --ds-accent-strong: #1C1B1A;
+  }
+  body { background: #fff !important; }
+  .ds-hub, .ds-theme-toggle, .ds-theme-toggle--labeled,
+  .ds-pagination, .ds-tabs, .ds-btn--icon,
+  .ds-ba, input[type="range"] { display: none !important; }
+  .ds-card, .ds-masthead { box-shadow: none !important; break-inside: avoid; }
+  a.ds-link { color: #1C1B1A !important; text-decoration: none; }
+  a.ds-link[href^="http"]::after {
+    content: " (" attr(href) ")";
+    font: 9.5px/1.4 var(--ds-font-mono); color: #666; word-break: break-all;
+  }
+  .ds-skeleton { animation: none; background: var(--ds-border); }
+}
+
+/* -- 21. Before/After — дергалка сравнения ------------------------------------- */
+.ds-ba {
+  position: relative; overflow: hidden;
+  border: 1px solid var(--ds-border); border-radius: var(--ds-radius);
+  user-select: none; touch-action: none;
+  background: var(--ds-surface2);
+}
+.ds-ba img { display: block; width: 100%; height: auto; pointer-events: none; -webkit-user-drag: none; user-select: none; }
+.ds-ba__after {
+  position: absolute; inset: 0; overflow: hidden;
+  clip-path: inset(0 0 0 var(--ds-ba-pos, 50%));
+}
+.ds-ba__after img { width: 100%; height: 100%; object-fit: cover; object-position: top; }
+.ds-ba__handle {
+  position: absolute; top: 0; bottom: 0; left: var(--ds-ba-pos, 50%);
+  width: 2px; background: var(--ds-accent); cursor: ew-resize;
+  transform: translateX(-1px);
+}
+.ds-ba__knob {
+  position: absolute; top: 50%; left: 50%;
+  transform: translate(-50%, -50%);
+  width: 34px; height: 34px; border-radius: var(--ds-radius-pill);
+  background: var(--ds-accent); color: var(--ds-accent-ink);
+  display: grid; place-items: center;
+  font: 700 13px/1 var(--ds-font-sans);
+  box-shadow: var(--ds-shadow);
+  cursor: ew-resize;
+}
+.ds-ba__label {
+  position: absolute; top: var(--ds-space-3); z-index: 2;
+  font: 600 var(--ds-text-xs)/1 var(--ds-font-mono);
+  text-transform: uppercase; letter-spacing: .08em;
+  background: var(--ds-surface); color: var(--ds-text);
+  border: 1px solid var(--ds-border); border-radius: var(--ds-radius-pill);
+  padding: 5px 10px;
+}
+.ds-ba__label--l { left: var(--ds-space-3); }
+.ds-ba__label--r { right: var(--ds-space-3); }
+
+/* -- 22. Кириллический дисплей-фолбэк ------------------------------------------- */
+:root {
+  --ds-font-display: "Instrument Serif", "Prata", Georgia, "Times New Roman", serif;
+}
+
+/* -- 23. Prata самохостом (OFL, 32 КБ) ------------------------------------------- */
+@font-face {
+  font-family: "Prata";
+  font-style: normal; font-weight: 400; font-display: swap;
+  src: url("fonts/prata-cyrillic.woff2") format("woff2");
+  unicode-range: U+0301, U+0400-045F, U+0490-0491, U+04B0-04B1, U+2116;
+}
+@font-face {
+  font-family: "Prata";
+  font-style: normal; font-weight: 400; font-display: swap;
+  src: url("fonts/prata-latin.woff2") format("woff2");
+  unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+2000-206F, U+2074, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+}
+
+/* -- 24. Голос по разделу (вложенные темы) --------------------------------------- */
+/* ГРАБЛЯ (эксперимент THI/CCI): color наследуется ВЫЧИСЛЕННЫМ значением от body —
+   вложенная section[data-theme] перебивает токены, но не унаследованный цвет. */
+[data-theme="dark"], [data-theme="instrument"],
+[data-theme="light"], [data-theme="form"] {
+  color: var(--ds-text);
+  background-color: transparent;
+}
+section[data-theme="dark"], section[data-theme="instrument"], section[data-theme="form"] {
+  background-color: var(--ds-bg);
+  border-radius: var(--ds-radius);
+  padding: var(--ds-space-4);
+}
+
+/* -- 25. Голос B «Формуляр» — data-theme="form" ----------------------------------- */
+[data-theme="form"] {
+  color-scheme: light;
+  --ds-bg: #F5F3ED;
+  --ds-surface: #FFFFFF;
+  --ds-surface2: #EEEAE0;
+  --ds-border: #D9D5C8;
+  /* статусы чуть темнее корня: бежевая поверхность съедает контраст
+     (#47753A давал лишь 4.51 на surface2 — впритык) */
+  --ds-green: #456F38;
+  --ds-orange: #A84C16;
+  --ds-radius: 6px;
+  --ds-radius-s: 3px;
+  color: var(--ds-text);
+  font-variant-numeric: tabular-nums;
+}
+[data-theme="form"] .ds-card { padding: 12px 14px; }
+[data-theme="form"] .ds-input,
+[data-theme="form"] .ds-select {
+  border: none; border-bottom: 1px solid var(--ds-border-strong);
+  border-radius: 0; background: transparent;
+  padding: 6px 2px; font-family: var(--ds-font-mono); font-size: 13.5px;
+}
+[data-theme="form"] .ds-input:focus,
+[data-theme="form"] .ds-select:focus {
+  outline: none; border-bottom: 2px solid var(--ds-accent); margin-bottom: -1px;
+}
+[data-theme="form"] .ds-label,
+[data-theme="form"] label {
+  font: 500 10.5px/1.2 var(--ds-font-mono);
+  text-transform: uppercase; letter-spacing: .12em;
+  color: var(--ds-faint);
+}
+[data-theme="form"] .ds-table { font-size: 12.5px; }
+[data-theme="form"] .ds-btn { padding: 7px 14px; font-size: 13px; }
+[data-theme="form"] .ds-kbd { box-shadow: inset 0 -1px 0 var(--ds-border-strong); }
+
+/* -- 26. Смена голоса = служебное движение (View Transitions) -----------------
+   Тема — состояние (HIG §5), значит смене положен кроссфейд из токенов, а не
+   «мгновенно и никак». JS витрины оборачивает смену data-theme в
+   document.startViewTransition(); длительность/кривая живут в CSS — на токенах,
+   одна на всех. Деградация: нет API — смена мгновенная (нынешнее поведение).
+   Cross-document: переходы между страницами одной витрины (архив ↔ выпуск) —
+   Chrome сам скипет анимацию при prefers-reduced-motion. */
+::view-transition-old(root),
+::view-transition-new(root) {
+  animation-duration: var(--ds-dur);
+  animation-timing-function: var(--ds-ease);
+}
+@view-transition { navigation: auto; }
+
+/* -- 27. Сноски-поповеры (Popover API, anchor-positioning) --------------------
+   Периодика обязана цитировать источники (HIG §7). Маркер .ds-fn становится
+   кнопкой с popovertarget; текст — в топ-слое: light-dismiss, ESC, фокус —
+   бесплатно, без JS. anchor= (HTML) ставит «маргиналию» к месту ссылки;
+   без anchor-поддержки поповер встаёт припиской к нижнему краю.
+   Бумага и фолбэк: список .ds-fnotes в конце выпуска печатается как есть —
+   поповер в print скрыт принудительно (см. блок 20 + правило ниже). */
+.ds-fn[popovertarget] {
+  appearance: none; background: none; border: none; padding: 0;
+  cursor: pointer; touch-action: manipulation;
+}
+.ds-fn[popovertarget]:focus-visible {
+  outline: 2px solid var(--ds-accent); outline-offset: 2px;
+  border-radius: 2px;
+}
+.ds-fn[popovertarget][aria-expanded="true"] { color: var(--ds-text); }
+.ds-fn-pop {
+  inset: auto; bottom: 18px; left: 50%; translate: -50% 0;
+  width: max-content; max-width: min(460px, calc(100vw - 40px));
+  margin: 0; padding: 10px 14px;
+  background: var(--ds-surface);
+  border: 1px solid var(--ds-border);
+  border-top: 2px solid var(--ds-accent);
+  border-radius: var(--ds-radius-s);
+  box-shadow: 0 10px 28px rgb(28 27 26 / .14);
+  font: 400 var(--ds-text-xs)/1.65 var(--ds-font-mono);
+  color: var(--ds-muted);
+}
+.ds-fn-pop b { color: var(--ds-text); }
+@supports (position-area: block-end) and (anchor-name: --ds-a) {
+  .ds-fn-pop {
+    left: auto; bottom: auto; translate: none;
+    position-area: block-end; margin: 8px;
+    /* урок QA: маркер у нижней кромки — поповер уезжал за экран;
+       нет места снизу — перекладываемся над строкой */
+    position-try-fallbacks: flip-block;
+  }
+}
+
+/* -- 28. Прогресс чтения выпуска (scroll-driven) ------------------------------
+   «Орнамент = данные» (HIG §2): линия-закладка показывает, сколько выпуска
+   прочитано. CSS-only, привязана к скроллу документа — сама не движется.
+   Краска --ds-accent (урок QA: --ds-rule в тёмной теме = 3:1, линия тонет).
+   Деградация: нет animation-timeline — полоски нет; print — тоже нет.
+   prefers-reduced-motion: скрыта по букве §5; голос по scrollbar-аргументу
+   (отражает действие читателя, не «оживляет») — вопрос №7 README. */
+.ds-progress {
+  position: fixed; top: 0; left: 0; right: 0; z-index: 60;
+  height: 2px; pointer-events: none;
+}
+.ds-progress::before {
+  content: ""; display: block; height: 100%;
+  /* закладка выпуска: краска характера витрины, не чернила —
+     урок QA: --ds-rule в тёмной теме даёт 3:1, 2px линия тонет;
+     --ds-accent держит контраст во всех голосах */
+  background: var(--ds-accent);
+  transform: scaleX(0); transform-origin: left center;
+  animation: ds-read linear forwards;
+  animation-timeline: scroll(root);
+}
+@keyframes ds-read { to { transform: scaleX(1); } }
+@supports not (animation-timeline: scroll()) { .ds-progress { display: none; } }
+@media (prefers-reduced-motion: reduce) { .ds-progress { display: none; } }
+
+/* -- 29. Формуляр без JS: :user-invalid + field-sizing -------------------------
+   Голос B — рабочий стол (HIG §6: состояния существуют всегда). Ошибка поля
+   красит лейбл и подчёркивание БЕЗ JS — :user-invalid срабатывает только после
+   касания оператора, пустая форма при загрузке не «кричит». Деградация: без
+   :has() подсветки нет, форма работает как раньше. field-sizing: textarea
+   растёт по содержимому, поле «примечание» больше не скроллится изнутри. */
+[data-theme="form"] .ds-field { display: block; }
+[data-theme="form"] .ds-field:has(:user-invalid) label,
+[data-theme="form"] .ds-field:has(:user-invalid) .ds-label {
+  color: var(--ds-red);
+}
+[data-theme="form"] .ds-field:has(:user-invalid) .ds-input {
+  border-bottom-color: var(--ds-red); border-bottom-width: 2px; margin-bottom: -1px;
+}
+[data-theme="form"] .ds-field__err {
+  display: none;
+  margin: 4px 0 0;
+  font: 400 11px/1.5 var(--ds-font-mono);
+  color: var(--ds-red);
+}
+[data-theme="form"] .ds-field:has(:user-invalid) .ds-field__err { display: block; }
+/* поле примечания — те же подчёркнутые правила, что у инпута формуляра */
+[data-theme="form"] .ds-textarea {
+  border: none; border-bottom: 1px solid var(--ds-border-strong);
+  border-radius: 0; background: transparent;
+  padding: 6px 2px; font-family: var(--ds-font-mono); font-size: 13.5px;
+  field-sizing: content;
+  min-height: 72px; max-height: 320px;
+  resize: block;
+}
+[data-theme="form"] .ds-textarea:focus {
+  outline: none; border-bottom: 2px solid var(--ds-accent); margin-bottom: -1px;
+}
+
+/* print: поповеры не существуют на бумаге — сноски живут списком внизу */
+@media print {
+  [popover] { display: none !important; }
+  .ds-progress { display: none !important; }
+}
+
+/* -- 30. Мобильная компакция периодики (v2.3.1) --------------------------
+   Голос владельца (Task 165): на телефоне «верх какой-то большой» —
+   мастхед + хаб-пилюли съедали до 39% первого экрана, подвал норовил
+   уйти под домашнюю полоску iOS. Правило компакции: телефоном контент
+   важнее шапки — лого и кегли сжимаются, хаб уходит в один скроллящийся
+   ряд, колофон получает safe-area. Аддитивно и scoped по 640px: витрины
+   без .ds-masthead/.ds-hub/.ds-footer--meta ничего не замечают. */
+@media (max-width: 640px) {
+  .ds-masthead { padding: 10px 0 12px; }
+  .ds-masthead__row { gap: var(--ds-space-3); }
+  .ds-masthead__brand { gap: var(--ds-space-3); }
+  .ds-masthead__logo { width: 38px; height: 38px; }
+  .ds-masthead__logo svg { width: 22px; height: 22px; }
+  .ds-masthead__title { font-size: 21px; letter-spacing: 0; }
+  .ds-masthead__sub { font-size: 13px; }
+  .ds-masthead__sub--display { font: italic 400 13px/1.3 var(--ds-font-display); }
+  /* лид витрины — максимум 3 строки, остальное на десктопе */
+  .ds-masthead__sub {
+    display: -webkit-box;
+    -webkit-box-orient: vertical;
+    -webkit-line-clamp: 3;
+    overflow: hidden;
+  }
+  /* бок (live + тоггл) — одной строкой, а не вторым этажом */
+  .ds-masthead__side { flex-wrap: nowrap; }
+  /* мета-строка — одна строка с fade, а не две */
+  .ds-masthead-meta {
+    flex-wrap: nowrap;
+    font-size: 10.5px;
+    white-space: nowrap; overflow: hidden;
+  }
+  .ds-masthead-meta > :last-child { flex: none; }
+  .ds-masthead-meta > :first-child {
+    overflow: hidden; text-overflow: ellipsis;
+    min-width: 0;
+  }
+  /* хаб — один горизонтальный ряд, пилюли не переносятся */
+  .ds-hub {
+    flex-wrap: nowrap;
+    overflow-x: auto;
+    scrollbar-width: none;
+    -webkit-overflow-scrolling: touch;
+    padding-bottom: 2px;
+  }
+  .ds-hub::-webkit-scrollbar { display: none; }
+  .ds-hub a { flex: none; white-space: nowrap; }
+  /* подвал: колофон не под домашней полоской */
+  .ds-footer { padding-bottom: calc(var(--ds-space-4) + env(safe-area-inset-bottom, 0px)); }
+  .ds-footer--meta { gap: 6px; }
 }
