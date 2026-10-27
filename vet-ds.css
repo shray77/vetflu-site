@@ -60,6 +60,14 @@
           .ds-dl (прогресс скачивания модели: байты × скорость × ETA).
           Гейты: порог 7:1 для field/night текст-ролей и field-туши;
           ночь-без-синего проверяется по b<min(r,g) каждого токена.
+   v2.4.1: поповер-фолбэк без Popover API (Chrome < 114, 2023) — сноска
+          деградирует в классическую периодику: маркер не прикидывается
+          кнопкой (курсор/тач сняты через @supports not selector(
+          :popover-open)), текст живёт каноничным дублем — списком
+          .ds-fnotes; дубль скрыт «всегда-закрыт» и показывается
+          :popover-open. Урок QA: @supports (popover: popover) — ложь
+          даже в свежих Chromium (HTML-атрибут ≠ CSS-свойство).
+          Повод: код-ревью Task 178 («сайты тоже»).
    Один файл: токены + компоненты. Подключается витриной как копия
    (репо приватное — CDN недоступен) или git submodule.
 
@@ -1291,6 +1299,23 @@ section[data-theme="dark"], section[data-theme="instrument"], section[data-theme
     /* урок QA: маркер у нижней кромки — поповер уезжал за экран;
        нет места снизу — перекладываемся над строкой */
     position-try-fallbacks: flip-block;
+  }
+}
+/* Деградация без Popover API (Chrome < 114, 2023): сноска остаётся
+   классической периодикой — маркер НЕ прикидывается кнопкой (курсор-
+   рука и тач-обещание сняты), текст живёт каноничным дублем —
+   списком .ds-fnotes внизу выпуска.
+   Урок QA (Task 179, пойман браузером): @supports (popover: popover) —
+   ЛОЖЬ даже в свежих Chromium с рабочим поповером (popover — HTML-
+   атрибут, не CSS-свойство); детект — selector(:popover-open).
+   Поэтому дубль скрыт «всегда-закрыт» без @supports вовсе: без API
+   он не умеет ни открываться, ни прятаться сам — торчал бы блоком
+   с рамкой и дублировал список; с API показывается :popover-open. */
+.ds-fn-pop { display: none; }
+.ds-fn-pop:popover-open { display: block; }
+@supports not selector(:popover-open) {
+  .ds-fn[popovertarget] {
+    cursor: default; touch-action: auto;
   }
 }
 
