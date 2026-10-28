@@ -75,6 +75,7 @@ data/model.json         — результат расчёта: series (m/c/z/cha
 data/habitat.json       — гео-драйверы среды обитания И8 (вода JRC GSW, NDVI MOD13Q1, птица GLW-4; статика, см. скрипт-генератор)
 feed.xml                — RSS 2.0: смены фазы риска (в корне репо)
 og-image.png            — OG-картинка витрины (1200×630)
+fonts.css               — Google Fonts, вендоренные локально: Inter, IBM Plex Mono, Instrument Serif (woff2 в fonts/, без CDN)
 scripts/fetch_weather.mjs — нормы (кэш) + текущая погода → data/weather.json
 scripts/fetch_outbreaks.mjs — WOAH WAHIS → фильтр ВПГП → коридоры → B/MB
 scripts/build_habitat.py  — генератор data/habitat.json: JRC GSW v1.5 (/vsicurl) + MOD13Q1 (ORNL) + GLW-4 (Dataverse); вручную, не в CI
