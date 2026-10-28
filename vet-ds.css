@@ -1,5 +1,5 @@
 /* ==========================================================================
-   vet-ds v2.3 «Научная периодика» — дизайн-система ветеринарной экосистемы
+   vet-ds v2.4.2 «Научная периодика» — дизайн-система ветеринарной экосистемы
    --------------------------------------------------------------------------
    v2.1:  редакционный слой — .ds-rule-double, .ds-dropcap, .ds-spark,
           .ds-overline--rule, .ds-masthead-meta, .ds-theme-toggle--labeled
@@ -68,6 +68,16 @@
           :popover-open. Урок QA: @supports (popover: popover) — ложь
           даже в свежих Chromium (HTML-атрибут ≠ CSS-свойство).
           Повод: код-ревью Task 178 («сайты тоже»).
+   v2.4.2: хвост аудита 183 (Task 184) — фокус в один канон: .ds-btn
+           больше не гасит чернильный контур блока 18 собственным
+           box-shadow (дубль v2.3-эпохи, :514/:1072 — последний настоящий
+           дубль селектора ядра); блок 24 вкладывает и полевые секции —
+           section[data-theme="field"/"night"] получают фон/радиус/
+           паддинг (containment без inline-костылей — example.html
+           почищен); стрелка .ds-select переопределена для field
+           (#524D45) и night (#A2957B — 5.47:1, прежде наследовала
+           корневую 3.20:1); gate.yml: push-ветка починена (ain] →
+           [main]), dart-срез gen/ds_tokens.g.dart гейтится diff-ом.
    Один файл: токены + компоненты. Подключается витриной как копия
    (репо приватное — CDN недоступен) или git submodule.
 
@@ -511,7 +521,9 @@
               color var(--ds-dur) var(--ds-ease);
 }
 .ds-btn:hover { background: var(--ds-surface2); border-color: var(--ds-text); }
-.ds-btn:focus-visible { outline: none; box-shadow: var(--ds-focus); }
+/* v2.4.2: собственный box-shadow-фокус снят — кнопка живёт общим
+   чернильным контуром блока 18 (дубль селектора .ds-btn:focus-visible
+   на :514/:1072 был последним настоящим дублем ядра, аудит 183-С4) */
 .ds-btn:active { transform: translateY(1px); }
 .ds-btn:disabled, .ds-btn[aria-disabled="true"] {
   opacity: .45; cursor: not-allowed; transform: none;
@@ -704,6 +716,15 @@ a.ds-chip:hover { border-color: var(--ds-text); color: var(--ds-text); }
 }
 [data-theme="instrument"] .ds-select {
   background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%23939EA9' stroke-width='2' stroke-linecap='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E");
+}
+/* v2.4.2: полевые стрелки — прежде тема наследовала корневую (#6E695C:
+   на ночном #16130E лишь 3.20:1 — небуквенная графика §1.4.11 у самой
+   кромки); каждой теме — своя, по её faint-токену, как у dark/instrument */
+[data-theme="field"] .ds-select {
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%23524D45' stroke-width='2' stroke-linecap='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E");
+}
+[data-theme="night"] .ds-select {
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%23A2957B' stroke-width='2' stroke-linecap='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E");
 }
 
 .ds-kbd {
@@ -1178,15 +1199,20 @@ a.ds-chip:hover { border-color: var(--ds-text); color: var(--ds-text); }
 /* ГРАБЛЯ (эксперимент THI/CCI): color наследуется ВЫЧИСЛЕННЫМ значением от body —
    вложенная section[data-theme] перебивает токены, но не унаследованный цвет. */
 [data-theme="dark"], [data-theme="instrument"],
-[data-theme="light"], [data-theme="form"] {
+[data-theme="light"], [data-theme="form"],
+[data-theme="field"], [data-theme="night"] {
   color: var(--ds-text);
   background-color: transparent;
 }
-section[data-theme="dark"], section[data-theme="instrument"], section[data-theme="form"] {
+section[data-theme="dark"], section[data-theme="instrument"], section[data-theme="form"],
+section[data-theme="field"], section[data-theme="night"] {
   background-color: var(--ds-bg);
   border-radius: var(--ds-radius);
   padding: var(--ds-space-4);
 }
+/* v2.4.2: полевой containment — секции «Солнце»/ночь вкладываются как
+   dark/form: фон/радиус/паддинг из ядра, без inline-костылей в витрине
+   (аудит 183-С5; стенд example.html почищен синхронно) */
 
 /* -- 25. Голос B «Формуляр» — data-theme="form" ----------------------------------- */
 [data-theme="form"] {
