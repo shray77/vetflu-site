@@ -45,7 +45,7 @@ Graceful degradation: нет свежей погоды — R = max(M, C, Z) бе
 
 - **История**: `build_model.mjs` ежедневно дописывает в `data/history.json` запись `{date, per_flyway: {ea:{m,c,z,mw,mb,r,chan},…}}` (дедуп по дате, кап 180); в model.json вкладываются последние 90 дней (`history`) — по ним рисуются спарклайны на карточках флайвеев.
 - **Бэктест v2**: по волнам 2020–2023 на их неделях считаются все три канала, `hit = max(M,C,Z) ≥ 45`. Осенние волны 2020/2021/2022/2023 — транзит ✓; летняя каспийская 2021 (н27, M=4) — колонии C≈80 ✓ (пост-хок, см. выше). Публикуется в `backtest` model.json и витрине с колонкой «Канал».
-- **RSS**: `data/feed.xml` (RSS 2.0, ru) — смены фазы риска (ph_r) любого флайвея между соседними днями истории + стартовое состояние, последние 20 событий.
+- **RSS**: `feed.xml` (RSS 2.0, ru, в корне репо) — смены фазы риска (ph_r) любого флайвея между соседними днями истории + стартовое состояние, последние 20 событий.
 
 Пересчёт — **GitHub Actions ежедневно в 06:00 МСК** (`.github/workflows/update.yml`): погода + вспышки + модель + OG-картинка, результат коммитится в data/. Параметризация — экспертная, по открытым орнитологическим сводкам; план уточнения — **eBird Status & Trends** и **Movebank**.
 
@@ -64,7 +64,7 @@ Graceful degradation: нет свежей погоды — R = max(M, C, Z) бе
 ## Структура
 
 ```
-index.html              — витрина (тёмная тема экосистемы, Leaflet из vendor/)
+index.html              — витрина (светлая «бумага» дефолт + тёмный тоггл, Leaflet из vendor/)
 data/migration.json     — экспертная параметризация: группы видов × флайвеи + каналы (v2.0.0-channels)
 data/points.json        — 16 узлов (4 на флайвей): координаты, share, colony/wintering
 data/climate_cache.json — кэш климатических норм 2015–2024 (Open-Meteo archive)
@@ -73,7 +73,7 @@ data/outbreaks_live.json — свежие HPAI-события WAHIS + B/MB по 
 data/history.json       — ежедневная история R (кап 180 записей, дедуп по дате)
 data/model.json         — результат расчёта: series (m/c/z/chan) × 52 недели × 4 флайвея + nodes/history/backtest
 data/habitat.json       — гео-драйверы среды обитания И8 (вода JRC GSW, NDVI MOD13Q1, птица GLW-4; статика, см. скрипт-генератор)
-data/feed.xml           — RSS 2.0: смены фазы риска
+feed.xml                — RSS 2.0: смены фазы риска (в корне репо)
 og-image.png            — OG-картинка витрины (1200×630)
 scripts/fetch_weather.mjs — нормы (кэш) + текущая погода → data/weather.json
 scripts/fetch_outbreaks.mjs — WOAH WAHIS → фильтр ВПГП → коридоры → B/MB

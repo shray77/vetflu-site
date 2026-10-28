@@ -148,8 +148,10 @@
   .ob-bar { height: 6px; border-radius: 3px; background: #263042; overflow: hidden; margin: 7px 0 5px; }
   .ob-bar i { display: block; height: 100%; border-radius: 3px; }
   .ob-meta { font: 12px var(--mono); color: var(--muted); }
-  .ob-ev { color: var(--faint); font-size: 12px; margin-top: 5px; }
-  .ob-ev span { white-space: nowrap; margin-right: 12px; display: inline-block; margin-bottom: 2px; }
+  .ob-ev { color: var(--faint); font-size: 12px; margin-top: 5px; display: flex; flex-wrap: wrap; gap: 2px 12px; }
+  /* события — отдельные чипы дат: переносятся по одному (flex-wrap), а не неразрывной цепочкой inline-block;
+     max-width+ellipsis — страховка от сверхдлинных названий стран (внешние данные WAHIS) */
+  .ob-ev span { white-space: nowrap; max-width: 100%; overflow: hidden; text-overflow: ellipsis; }
   @media (max-width: 640px) { .ob-row { grid-template-columns: 1fr; } }
   .strip { display: grid; gap: 3px; }
   .strip .row { display: grid; grid-template-columns: 74px 1fr; gap: 8px; align-items: center; }
@@ -492,7 +494,7 @@ curl -s https://shray77.github.io/vetflu-site/feed.xml | head</p>
 let M = null, week = 1, fwSel = "ea", CURW = 1;
 let map = null, lines = {}, hubLayer = null, baseLayer = null, baseRef = null;
 
-const esc = (s) => String(s).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+const esc = (s) => String(s).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;").replace(/'/g, "&#39;");
 const MONTHS = ["янв","фев","мар","апр","мая","июн","июл","авг","сен","окт","ноя","дек"];
 // v2.0: каналы риска
 const CHAN_COLOR = { transit: "var(--chan-transit)", colonies: "var(--chan-colonies)", wintering: "var(--chan-wintering)" };
@@ -691,9 +693,9 @@ function drawFlyways() {
            : `<span class="factor" title="нет свежих погодных данных">W</span><span class="factor">P</span>`) +
         (ob ? `<span class="factor on" title="фон заносов WAHIS (60 дн): ${ob.ev30} событий за 30 дн · B=${ob.b} (сатурация 10)">B ✓ · ${ob.ev30} всп./30д</span>`
             : `<span class="factor" title="нет свежих данных WAHIS — B нейтрален">B</span>`) +
-        (ob ? `<span class="factor on" title="входящее давление: вспышки в странах-граничниках (21 дн): ${(ob.bp_countries || []).join(", ") || "тихо"}">BP ✓ · ${ob.bp ? ob.bp.toFixed(2) : "1.00"}×</span>`
+        (ob ? `<span class="factor on" title="входящее давление: вспышки в странах-граничниках (21 дн): ${esc((ob.bp_countries || []).join(", ") || "тихо")}">BP ✓ · ${ob.bp ? ob.bp.toFixed(2) : "1.00"}×</span>`
             : `<span class="factor" title="нет свежих данных WAHIS — BP нейтрален">BP</span>`) +
-        (wfl ? `<span class="factor on" title="ветровой перенос 72 ч (Open-Meteo): wd_raw=${wfl.wd_raw ?? 0} · вклад: ${(wfl.contributing || []).map((x) => `${x.country} ${x.ws}`).join(", ") || "нет"}">WD ✓ · ${wfl.wd != null ? wfl.wd.toFixed(2) : "1.00"}×</span>`
+        (wfl ? `<span class="factor on" title="ветровой перенос 72 ч (Open-Meteo): wd_raw=${wfl.wd_raw ?? 0} · вклад: ${esc((wfl.contributing || []).map((x) => `${x.country} ${x.ws}`).join(", ") || "нет")}">WD ✓ · ${wfl.wd != null ? wfl.wd.toFixed(2) : "1.00"}×</span>`
             : `<span class="factor" title="нет свежих данных ветра — WD нейтрален">WD</span>`) +
         (s.hg != null ? `<span class="factor on" title="гео-фактор среды обитания (статика, Opata et al. 2025): вода JRC GSW v1.5 · NDVI MOD13Q1 · плотность птицы FAO GLW-4; gh = ${s.gh ?? "—"}">HG ✓ · ${s.hg.toFixed(2)}×</span>`
                       : `<span class="factor" title="нет data/habitat.json — HG нейтрален">HG</span>`)
@@ -765,6 +767,7 @@ function drawSpecTable() {
 }
 
 function setWeek(w) {
+  if (!M) return; // model.json ещё не загружен: рисовать нечего — boot() сам вызовет setWeek(CURW); слайдер без TypeError
   week = Math.min(52, Math.max(1, w));
   document.getElementById("week").value = week;
   // v2.0: скраббер показывает ведущий канал недели по всем флайвеям, а не только M
