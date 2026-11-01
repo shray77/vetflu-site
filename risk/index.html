@@ -17,6 +17,10 @@
   /* Ядро — vet-ds; характер VetFlu — небесный акцент */
   :root {
     --ds-accent: #0e7490; --ds-accent-strong: #155e75; --ds-accent-ink: #f0f9ff;
+    /* П2 (QA 01-vetflu-hardqa): флайвейные цвета тема-зависимы — hex из model.json
+       рассчитан на тёмный фон (1.92–2.72:1 на белом); светлой теме — затемнённые
+       варианты тех же семейств (4.5–5.9:1 на surface, WCAG 1.4.3/1.4.11) */
+    --fw-ea: #0369a1; --fw-bsm: #c2410c; --fw-ca: #7c3aed; --fw-eaa: #047857;
     --bg: var(--ds-bg); --surface: var(--ds-surface); --surface2: var(--ds-surface2); --border: var(--ds-border);
     --text: var(--ds-text); --muted: var(--ds-muted); --faint: var(--ds-faint);
     --accent: var(--ds-accent); --red: var(--ds-red); --amber: var(--ds-amber);
@@ -24,6 +28,7 @@
   }
   [data-theme="dark"] {
     --ds-accent: #38bdf8; --ds-accent-strong: #7dd3fc; --ds-accent-ink: #06121c;
+    --fw-ea: #38bdf8; --fw-bsm: #fb923c; --fw-ca: #a78bfa; --fw-eaa: #34d399;
   }
   * { box-sizing: border-box; }
   :focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
@@ -72,6 +77,9 @@
 const ESC = { "&": "&amp;", "<": "&lt;", ">": "&gt;" };
 const esc = (s) => String(s).replace(/[&<>]/g, (c) => ESC[c]);
 const CHAN = { transit: "Транзит", colonies: "Колонии", wintering: "Зимовки" };
+/* П2: флайвейный hex из model.json — тёмная тема; светлой — затемнённый вариант (CSS --fw-*) */
+const FW_COLOR = { ea: "var(--fw-ea)", bsm: "var(--fw-bsm)", ca: "var(--fw-ca)", eaa: "var(--fw-eaa)" };
+const fwColor = (f) => FW_COLOR[f.id] || f.color;
 const rColor = (v) => v >= 75 ? "var(--ds-red)" : v >= 45 ? "var(--ds-amber)" : v >= 15 ? "var(--accent)" : "var(--ds-faint)";
 function phase(v) { return v >= 75 ? "окно высокого риска" : v >= 45 ? "активный пролёт" : v >= 15 ? "умеренное движение" : "фон"; }
 async function tick() {
@@ -95,11 +103,11 @@ async function tick() {
       const dec = live
         ? `max(M${s.m}·C${s.c}·Z${s.z}) × MW ${s.mw} × MB ${s.mb} × BP ${s.bp ?? 1} × WD ${s.wd ?? 1} × HG ${s.hg ?? 1}`
         : `max(M${s.m}·C${s.c}·Z${s.z}) — без live-множителей`;
-      return `<div class="fw" style="border-top-color:${f.color}">
-        <h2 style="color:${f.color}">${esc(f.label)}</h2>
+      return `<div class="fw" style="border-top-color:${fwColor(f)}">
+        <h2 style="color:${fwColor(f)}">${esc(f.label)}</h2>
         <div class="reg">${esc(f.regions)}</div>
         <div><span class="r" style="color:${rColor(v)}">${v}</span><span class="ph" style="color:${rColor(v)};border-color:${rColor(v)}">${esc(live && s.ph_r ? s.ph_r : s.ph)}</span></div>
-        <div class="chan" style="color:${f.color}">${esc(CHAN[s.chan] || s.chan)} · неделя ${w}</div>
+        <div class="chan" style="color:${fwColor(f)}">${esc(CHAN[s.chan] || s.chan)} · неделя ${w}</div>
         <div class="dec">${esc(dec)}</div>
       </div>`;
     }).join("");

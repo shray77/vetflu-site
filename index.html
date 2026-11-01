@@ -36,10 +36,16 @@
     --red: var(--ds-red); --orange: var(--ds-orange); --amber: var(--ds-amber);
     --green: var(--ds-green); --violet: var(--ds-violet);
     --mono: var(--ds-font-mono);
+    /* П2 (QA 01-vetflu-hardqa): флайвейные цвета тема-зависимы — единственный hex из
+       model.json (#38bdf8/#fb923c/#a78bfa/#34d399) рассчитан на тёмный фон (1.92–2.72:1
+       на белом); светлой теме — затемнённые варианты тех же семейств (4.5–5.9:1 на surface,
+       gate WCAG 1.4.3/1.4.11). model.json не трогаем — подмена только в витрине. */
+    --fw-ea: #0369a1; --fw-bsm: #c2410c; --fw-ca: #7c3aed; --fw-eaa: #047857;
   }
   [data-theme="dark"] {
     --ds-accent: #38bdf8; --ds-accent-strong: #7dd3fc; --ds-accent-ink: #06121c;
     --chan-transit: #38bdf8; --chan-colonies: #34d399; --chan-wintering: #a78bfa;
+    --fw-ea: #38bdf8; --fw-bsm: #fb923c; --fw-ca: #a78bfa; --fw-eaa: #34d399;
   }
   * { box-sizing: border-box; }
   :focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
@@ -138,7 +144,7 @@
 
   .strip-card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--ds-radius); padding: var(--ds-space-3) var(--ds-space-4); margin: 18px 0 8px; }
   .strip-card h2, section > h2, .panel h2 { font-family: var(--ds-font-display); font-weight: 400; font-size: 21px; margin: 0 0 6px; letter-spacing: -.01em; }
-  .sub { color: var(--muted); font-size: 13.5px; margin: 0 0 12px; }
+  .sub { color: var(--muted); font-size: 13.5px; margin: 0 0 12px; max-width: 72ch; } /* П1: строка 45–90 знаков, не 111–132 */
   .ob-row { display: grid; grid-template-columns: 118px 1fr; gap: 12px; padding: 12px 0 12px 12px; border-top: 1px solid var(--border); align-items: start; }
   .ob-row > div { min-width: 0; }
   .ob-row:first-child { border-top: none; }
@@ -180,7 +186,7 @@
 
   article.doc { background: var(--surface); border: 1px solid var(--border); border-radius: var(--ds-radius); padding: var(--ds-space-4) var(--ds-space-5); margin: 14px 0; }
   article.doc h2 { font-family: var(--ds-font-display); font-weight: 400; font-size: 20px; margin: 0 0 10px; letter-spacing: -.01em; }
-  article.doc p { margin: 8px 0; color: var(--muted); }
+  article.doc p { margin: 8px 0; color: var(--muted); max-width: 72ch; } /* П1: длина строки вместо полной ширины панели */
   article.doc p b, article.doc li b { color: var(--text); }
   article.doc ul { margin: 8px 0; padding-left: 20px; color: var(--muted); }
   article.doc code { overflow-wrap: anywhere; } /* длинные URL не должны раздувать мобильный документ */
@@ -205,6 +211,14 @@
     .strip .row { grid-template-columns: 52px 1fr; }
     .strip .wkbar { grid-template-columns: 52px 1fr; }
     .fw .m { font-size: 28px; }
+  }
+
+  /* П6 (QA): ландшафт телефона (высота < 500px) — вертикаль дефицит: прячем подзаголовок
+     мастхеда, хаб — один прокручиваемый ряд, карта 60vh — контент в первом вьюпорте */
+  @media (max-height: 500px) {
+    .ds-masthead__sub { display: none; }
+    .ds-hub { flex-wrap: nowrap; overflow-x: auto; }
+    #map { height: 60vh; }
   }
 
   /* v2.2: симулятор «что если» */
@@ -279,8 +293,8 @@
     <div id="map"></div>
     <div class="scrubber">
       <label for="week">неделя</label>
-      <input id="week" type="range" min="1" max="52" step="1" value="1">
-      <span class="wk" id="wk-label">—</span>
+      <input id="week" type="range" min="1" max="52" step="1" value="1" disabled>
+      <span class="wk" id="wk-label">загрузка model.json…</span>
       <button class="btn-mini" id="btn-now" type="button"><svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M8 2v4"/><path d="M16 2v4"/><rect width="18" height="18" x="3" y="4" rx="2"/><path d="M3 10h18"/><path d="m9 16 2 2 4-4"/></svg>сегодня</button>
     </div>
     <div class="map-note">
@@ -298,14 +312,14 @@
   </section>
 
   <section class="panel" id="hist-panel">
-    <h2>История R — день за днём <span class="phase-badge p1">v2.0+ · наполняется ежедневно</span></h2>
+    <h2>История R — день за днём <span class="phase-badge p1">наполняется ежедневно</span></h2>
     <p class="sub">Каждая дневная сборка добавляет точку (06:00 МСК). Пунктир — пороги «активный пролёт» (45) и «окно высокого риска» (75). График оживает с двумя и более днями наблюдений.</p>
     <div id="hist-chart"></div>
   </section>
 
   <section class="panel" id="nodes-panel">
-    <h2>Узлы сейчас — 16&nbsp;узловых точек <span class="phase-badge p1">v2.3 · свой MW и свой MB на узел</span></h2>
-    <p class="sub">Каждый узел — репрезентативная точка флайвея с экспертной долей транзитного потока (share, Σ по флайвею = 1). Погодный множитель считается по метеоточке узла (не усреднение по флайвею): R<sub>узла</sub> = значение ведущего канала флайвея × MW<sub>узла</sub> × MB × BP × WD. Флажки — колониальный канал (гнездовые колонии) и зимовочный (массовые зимовки). Сортировка по убыванию риска.</p>
+    <h2>Узлы сейчас — 16&nbsp;узловых точек <span class="phase-badge p1">свой MW и свой MB на узел</span></h2>
+    <p class="sub">Каждый узел — репрезентативная точка флайвея с экспертной долей транзитного потока (share, Σ по флайвею = 1). Погодный множитель считается по метеоточке узла (не усреднение по флайвею): R<sub>узла</sub> = значение ведущего канала флайвея × MW<sub>узла</sub> × MB<sub>узла</sub> × BP × WD × HG<sub>узла</sub>. Флажки — колониальный канал (гнездовые колонии) и зимовочный (массовые зимовки). Сортировка по убыванию риска.</p>
     <div style="overflow-x:auto">
       <table class="spec" id="nodes-table"></table>
     </div>
@@ -319,8 +333,8 @@
   </section>
 
   <section class="panel" id="sim-panel">
-    <h2>Симулятор «что если» <span class="phase-badge p1">v2.2 · крутите параметры — R пересчитается</span></h2>
-    <p class="sub">Ядро формулы вживую, без бэкенда: R = max(M, C, Z) × MW × MB × BP × WD. В проде модель умножает ещё на HG — географию среды флайвея (v2.4, 0.92–1.12) — и взвешивает форсаж W сезонными воротами (v2.6: сентябрь–апрель полный вес, лето 0.5). Слайдеры стартуют с текущих значений выбранного флайвея — двигайте любой и смотрите, что решает уровень риска.</p>
+    <h2>Симулятор «что если» <span class="phase-badge p1">крутите параметры — R пересчитается</span></h2>
+    <p class="sub">Ядро формулы вживую, без бэкенда: R = max(M, C, Z) × MW × MB × BP × WD × HG — та же формула, что в карточках и model.json. Форсаж W в проде взвешен сезонными воротами (v2.6: сентябрь–апрель полный вес, лето 0.5) — в симуляции берётся уже посчитанное W. Слайдеры стартуют с текущих значений выбранного флайвея — двигайте любой и смотрите, что решает уровень риска.</p>
     <div class="sim-chips" id="sim-chips"></div>
     <div class="sim-grid">
       <div>
@@ -332,6 +346,7 @@
         <div class="sim-row"><label>B — фон заносов</label><input id="sim_b" type="range" min="0" max="1" step="0.01"><output id="sim_b_o"></output></div>
         <div class="sim-row"><label title="сырой вклад вспышек в странах-граничниках: BP = 1 + 0.20·(1−exp(−raw/4))">bp_raw — границы</label><input id="sim_bpr" type="range" min="0" max="8" step="0.1"><output id="sim_bpr_o"></output></div>
         <div class="sim-row"><label title="вспышки на пути обратной траектории узла (96&nbsp;ч): WD = 1 + 0.15·(1−exp(−raw/2))">wd_raw — ветер</label><input id="sim_wdr" type="range" min="0" max="6" step="0.1"><output id="sim_wdr_o"></output></div>
+        <div class="sim-row"><label title="гео-фактор среды обитания (статика, v2.4): вода/NDVI/плотность птицеводства — Opata et al. 2025; HG = clamp(0.92 + 0.20·gh, 0.92, 1.12)">HG — среда</label><input id="sim_hg" type="range" min="0.92" max="1.12" step="0.001"><output id="sim_hg_o"></output></div>
       </div>
       <div class="sim-out" id="sim-out"></div>
     </div>
@@ -507,6 +522,13 @@ const CHAN_TIP = {
 };
 function chanName(id) { return (M.channels && M.channels[id] && M.channels[id].label) || ({ transit: "Транзит", colonies: "Колонии", wintering: "Зимовки" })[id] || id; }
 function chanMax(s) { return Math.max(s.m, s.c, s.z); }
+/* П2 (QA): тема-зависимый цвет флайвея — model.json хранит один hex под тёмную тему;
+   светлой теме витрина подставляет затемнённый вариант (CSS-переменные --fw-*, см. :root).
+   fwColor — для inline-стилей (var() работает), fwColorHex — для Leaflet/SVG-атрибутов
+   (атрибуты не резолвят var(); карта перерисовывается при смене темы — актуальный hex). */
+const FW_COLOR = { ea: "--fw-ea", bsm: "--fw-bsm", ca: "--fw-ca", eaa: "--fw-eaa" };
+function fwColor(fw) { return FW_COLOR[fw.id] ? `var(${FW_COLOR[fw.id]})` : fw.color; }
+function fwColorHex(fw) { return FW_COLOR[fw.id] ? (vizVar(FW_COLOR[fw.id]) || fw.color) : fw.color; }
 
 function isoWeek(d) {
   const t = new Date(Date.UTC(d.getFullYear(), d.getMonth(), d.getDate()));
@@ -555,7 +577,7 @@ function sparkHtml(fwId, color) {
   const pts = recs.map((h, i) => `${(i / (recs.length - 1)) * 100},${28 - (h.per_flyway[fwId].r / 100) * 26 - 1}`).join(" ");
   return `<div class="spark"><div class="cap">история R · ${recs.length} дн · ${esc(recs[0].date)} — ${esc(recs[recs.length - 1].date)}</div>
     <svg viewBox="0 0 100 28" preserveAspectRatio="none" role="img" aria-label="История R флайвея">
-      <polyline points="${pts}" fill="none" stroke="${color}" stroke-width="1.6" vector-effect="non-scaling-stroke"/>
+      <polyline points="${pts}" fill="none" style="stroke:${color}" stroke-width="1.6" vector-effect="non-scaling-stroke"/>
       <line x1="0" y1="1.5" x2="100" y2="1.5" style="stroke:var(--ds-border-strong)" stroke-width=".5"/>
     </svg></div>`;
 }
@@ -568,7 +590,10 @@ function shifted(sp, kind, fwId) {
 
 function initMap() {
   if (map || typeof L === "undefined") return;
-  map = L.map("map", { scrollWheelZoom: false }).setView([58, 55], 3);
+  map = L.map("map", { scrollWheelZoom: false, zoomControl: false }).setView([58, 55], 3);
+  // З2 (QA): дефолтные zoomInTitle/zoomOutTitle — английские («Zoom in/out») на
+  // русскоязычной витрине; русские подписи становятся и title, и aria-label кнопок
+  L.control.zoom({ zoomInTitle: "Приблизить", zoomOutTitle: "Отдалить" }).addTo(map);
   // флаг-фикс: дефолтный префикс Leaflet 1.8+ содержит SVG флага Украины — заменяем
   // на чистую ссылку (BSD-заслуги сохранены), как в vet-meteo + CSS-страховка выше
   if (map.attributionControl) map.attributionControl.setPrefix('<a href="https://leafletjs.com" target="_blank" rel="noopener">Leaflet</a>');
@@ -632,11 +657,11 @@ function drawMap() {
       head = `R = ${v} <span style="color:var(--ds-muted)">(${bits.join(" × ")} · канал: ${esc(chanName(s.chan))})</span>`;
     } else head = `ведущий канал: ${esc(chanName(s.chan))} = ${chanMax(s)} <span style="color:var(--ds-muted)">(M${s.m} · C${s.c} · Z${s.z})</span>`;
     lines[fw.id] = paths.map(p => L.polyline(p, {
-      color: fw.color, weight, opacity, lineCap: "round",
+      color: fwColorHex(fw), weight, opacity, lineCap: "round",
     }).bindPopup(
       `<b>${esc(fw.label)}</b><br>${head} · ${esc(isNow() && s.r != null ? (s.ph_r || s.ph) : s.ph)}<br>${esc(s.seas)}<br><span style="color:var(--ds-muted)">${esc(fw.regions)}</span>`
     ).addTo(map));
-    fw.hubs.forEach(h => L.circleMarker(h.ll, { radius: 3.5, color: vizVar("--ds-text"), weight: 1, fillColor: fw.color, fillOpacity: .9 })
+    fw.hubs.forEach(h => L.circleMarker(h.ll, { radius: 3.5, color: vizVar("--ds-text"), weight: 1, fillColor: fwColorHex(fw), fillOpacity: .9 })
       .bindPopup(`<b>${esc(h.name)}</b><br><span style="color:var(--ds-muted)">узел концентраций · ${esc(fw.label)}</span>`).addTo(hubLayer));
   }
   // v2.0: 16 узловых точек — размер/цвет ∝ R узла, попап с разложением
@@ -671,7 +696,7 @@ function drawStats() {
   const f = (d) => d.getUTCDate() + " " + MONTHS[d.getUTCMonth()];
   document.getElementById("stats").innerHTML =
     `<div class="stat"><b style="color:var(--accent)">${week}</b><span>неделя года · ${f(a)} — ${f(b)}</span></div>` +
-    `<div class="stat"><b style="color:${mColor(top.v)}">${top.v}</b><span>${isNow() && (M.weather || M.outbreaks) ? "макс R сейчас (max каналов × MW × MB × BP × WD) — " : "макс M сейчас — "}${esc(top.f.label)}</span></div>` +
+    `<div class="stat"><b style="color:${mColor(top.v)}">${top.v}</b><span>${isNow() && (M.weather || M.outbreaks) ? "макс R сейчас (max каналов × MW × MB × BP × WD × HG) — " : "макс M сейчас — "}${esc(top.f.label)}</span></div>` +
     `<div class="stat"><b style="color:${hot ? "var(--red)" : "var(--text)"}">${hot}</b><span>флайвеев в окне высокого риска (≥75)</span></div>` +
     `<div class="stat"><b style="font-size:15px;padding-top:6px">${esc(peaks)}</b><span>пики осеннего пролёта (неделя)</span></div>`;
 }
@@ -716,7 +741,7 @@ function drawFlyways() {
       const val = { transit: s.m, colonies: s.c, wintering: s.z }[id];
       return `<div class="cb" title="${CHAN_TIP[id]}"><span>${chanName(id)}</span><span class="cbt"><i style="width:${val}%;background:${CHAN_COLOR[id]}"></i></span><span class="cbv">${val}</span></div>`;
     }).join("");
-    return `<div class="fw" style="border-top-color:${fw.color}">
+    return `<div class="fw" style="border-top-color:${fwColor(fw)}">
       <h3>${esc(fw.label)}</h3>
       <div class="reg">${esc(fw.regions)}</div>
       <div class="mrow"><span class="m" style="color:${mColor(v)}">${v}</span>
@@ -726,14 +751,14 @@ function drawFlyways() {
       <div class="chbars">${bars}</div>
       <div class="factors">${factors}</div>
       <div class="win">${esc(sub)}<br>${esc(winTxt)} · пик осени: н${M.series[fw.id].peak_autumn_week}</div>
-      ${sparkHtml(fw.id, fw.color)}
+      ${sparkHtml(fw.id, fwColor(fw))}
     </div>`;
   }).join("");
 }
 
 function drawStrip() {
   document.getElementById("strip").innerHTML = M.flyways.map(fw =>
-    `<div class="row"><span class="nm" style="color:${fw.color}">${esc(fw.short)}</span>
+    `<div class="row"><span class="nm" style="color:${fwColor(fw)}">${esc(fw.short)}</span>
      <span class="cells">${M.series[fw.id].weeks.map(x =>
       `<i class="cell${x.w === week ? " cur" : ""}" data-w="${x.w}" title="н${x.w}: M=${x.m} · C=${x.c} · Z=${x.z} → ${esc(chanName(x.chan))} ${chanMax(x)} · ${esc(x.ph)}" style="background:${mColor(x.m)}"></i>`).join("")}</span></div>`
   ).join("") +
@@ -752,7 +777,7 @@ function drawSpecTable() {
     M.species.map(sp => {
       const spr = shifted(sp, "spring", fwSel), aut = shifted(sp, "autumn", fwSel);
       const wf = sp.fw[fwSel] ?? 0;
-      const wcol = fw.color;
+      const wcol = fwColor(fw);
       // P2: тултип с точными окнами (start–peak–end) по всем флайвеям из migration.json
       const allWin = M.flyways.map(f2 => {
         const s2 = shifted(sp, "spring", f2.id), a2 = shifted(sp, "autumn", f2.id);
@@ -772,6 +797,8 @@ function setWeek(w) {
   if (!M) return; // model.json ещё не загружен: рисовать нечего — boot() сам вызовет setWeek(CURW); слайдер без TypeError
   week = Math.min(52, Math.max(1, w));
   document.getElementById("week").value = week;
+  document.getElementById("week").disabled = false; // Ш2: до загрузки модели слайдер заблокирован
+  try { history.replaceState(null, "", "#w" + week); } catch (e) {} // П5: выбранная неделя выживает F5 и адресуема ссылкой (мусорный hash игнорируется)
   // v2.0: скраббер показывает ведущий канал недели по всем флайвеям, а не только M
   const chanTxt = M ? M.flyways.map(f => {
     const s = M.series[f.id].weeks[week - 1];
@@ -787,7 +814,7 @@ function renderMeta() {
   document.getElementById("meta").innerHTML =
     `<span class="dot ok"></span><span>${esc(M.version)} · сборка ${esc(M.generated_at.slice(0, 10))}${wt}${obt}</span>`;
   document.getElementById("legend").innerHTML = M.flyways.map(fw =>
-    `<span><i style="background:${fw.color}"></i>${esc(fw.short)}</span>`).join("");
+    `<span><i style="background:${fwColor(fw)}"></i>${esc(fw.short)}</span>`).join("");
 }
 
 function drawOutbreaks() {
@@ -809,8 +836,8 @@ function drawOutbreaks() {
           ? `ветер 72 ч: WD <b>${wf.wd.toFixed(2)}×</b> (wd_raw ${wf.wd_raw}) · попутный перенос: ${wf.contributing.map((x) => `${esc(x.country)} ws=${x.ws}`).join(", ")}`
           : `ветер 72 ч: WD ${wf.wd.toFixed(2)}× — вспышки есть, но попутного переноса «в РФ» нет`)
       : "ветер: данных нет (WD нейтрален)";
-    return `<div class="ob-row" style="border-left:3px solid ${fw.color}">
-      <div><div class="ob-nm" style="color:${fw.color}">${esc(fw.short)}</div>
+    return `<div class="ob-row" style="border-left:3px solid ${fwColor(fw)}">
+      <div><div class="ob-nm" style="color:${fwColor(fw)}">${esc(fw.short)}</div>
         <div class="ob-bar"><i style="width:${Math.round(b * 100)}%;background:${bColor(b)}"></i></div>
         <div class="ob-meta">B ${b.toFixed(2)} → MB ${mb.toFixed(2)}× · BP ${bp.toFixed(2)}×</div></div>
       <div><div class="ob-meta">событий ВПГП в коридоре: ${p.ev14 ?? 0} за 14 дн · ${p.ev30 ?? 0} за 30 дн · ${p.ev60 ?? 0} за 60 дн · активных ${p.ongoing ?? 0}</div>
@@ -840,7 +867,7 @@ function drawNodes() {
       const rCell = n.r != null ? `<b style="color:${mColor(n.r)}">${n.r}</b>` : `<span style="color:var(--faint)" title="нет свежих погодных данных — R узла не считается">—</span>`;
       return `<tr>
         <td class="nm"><b>${esc(n.name)}</b>${chips}</td>
-        <td style="color:${fw ? fw.color : "inherit"};font:12px var(--mono)">${esc(fw ? fw.short : n.fwid)}</td>
+        <td style="color:${fw ? fwColor(fw) : "inherit"};font:12px var(--mono)">${esc(fw ? fw.short : n.fwid)}</td>
         <td class="win">${rCell}</td>
         <td class="win">${Math.round(n.share * 100)}%</td>
         <td class="win">${n.mw ?? "—"}</td>
@@ -865,7 +892,7 @@ function drawForecast() {
       const arrow = d > 0 ? `<span class="up">▲ ${d}</span>` : d < 0 ? `<span class="down">▼ ${-d}</span>` : `<span class="flat">=</span>`;
       return `<div class="fc-cell"><b style="color:${mColor(v)}">${v}</b><span class="d">н${w} · ${esc(chanName(s.chan).toLowerCase())} ${arrow}</span></div>`;
     }).join("");
-    return `<div class="fc-row"><span style="color:${fw.color};font-weight:700">${esc(fw.short)}</span>${cells}</div>`;
+    return `<div class="fc-row"><span style="color:${fwColor(fw)};font-weight:700">${esc(fw.short)}</span>${cells}</div>`;
   }).join("");
 }
 
@@ -873,7 +900,7 @@ function drawBacktest() {
   const rows = (M.backtest || []).map(x => {
     const fl = M.flyways.find(f => f.id === x.fw);
     return `<tr><td class="nm"><b>${esc(x.label)}</b><br><span class="lat">${esc(x.note)}</span></td>
-      <td style="color:${fl ? fl.color : "inherit"};font:12px var(--mono)">${esc(fl ? fl.short : x.fw)}</td>
+      <td style="color:${fl ? fwColor(fl) : "inherit"};font:12px var(--mono)">${esc(fl ? fl.short : x.fw)}</td>
       <td class="win">н${x.week} · ${esc(x.season)}</td>
       <td class="win">M ${x.m} · C ${x.c} · Z ${x.z}</td>
       <td class="win"><span style="color:${CHAN_COLOR[x.chan] || "inherit"}">${esc(chanName(x.chan))}</span> <b style="color:${mColor(x.value)}">${x.value}</b>${x.hit ? " ✓" : " · <span style='color:var(--orange)'>промах</span>"}</td></tr>`;
@@ -900,16 +927,16 @@ function drawHistory() {
   svg += `<text x="${W - 2}" y="${y(45) - 2}" style="fill:var(--ds-faint)" font-size="7" text-anchor="end" font-family="monospace">45 — пролёт</text>`;
   for (const f of M.flyways) {
     const pts = recs.map((h, i) => { const v = h.per_flyway[f.id].r; return v == null ? null : `${x(i).toFixed(1)},${y(v).toFixed(1)}`; }).filter(Boolean);
-    if (pts.length > 1) svg += `<polyline points="${pts.join(" ")}" fill="none" stroke="${f.color}" stroke-width="1.7" vector-effect="non-scaling-stroke"/>`;
+    if (pts.length > 1) svg += `<polyline points="${pts.join(" ")}" fill="none" style="stroke:${fwColor(f)}" stroke-width="1.7" vector-effect="non-scaling-stroke"/>`;
     const last = recs[recs.length - 1].per_flyway[f.id].r;
-    if (last != null) svg += `<circle cx="${x(recs.length - 1).toFixed(1)}" cy="${y(last).toFixed(1)}" r="2" fill="${f.color}"/>`;
+    if (last != null) svg += `<circle cx="${x(recs.length - 1).toFixed(1)}" cy="${y(last).toFixed(1)}" r="2" style="fill:${fwColor(f)}"/>`;
   }
   svg += `</svg>`;
-  el.innerHTML = svg + `<div class="hist-legend">${M.flyways.map(f => `<span><i style="background:${f.color}"></i>${esc(f.short)}</span>`).join("")}<span class="dim">пунктир — пороги 45/75 · ${esc(recs[0].date)} — ${esc(recs[recs.length - 1].date)} · ${recs.length} дн</span></div>`;
+  el.innerHTML = svg + `<div class="hist-legend">${M.flyways.map(f => `<span><i style="background:${fwColor(f)}"></i>${esc(f.short)}</span>`).join("")}<span class="dim">пунктир — пороги 45/75 · ${esc(recs[0].date)} — ${esc(recs[recs.length - 1].date)} · ${recs.length} дн</span></div>`;
 }
 
-// v2.2: симулятор «что если» — формула v2.2 вживую, старт с текущих значений модели
-const SIM_MAP = { "sim_m": "sim_m_o", "sim_c": "sim_c_o", "sim_z": "sim_z_o", "sim_w": "sim_w_o", "sim_p": "sim_p_o", "sim_b": "sim_b_o", "sim_bpr": "sim_bpr_o", "sim_wdr": "sim_wdr_o" };
+// v2.2: симулятор «что если» — формула модели вживую (v2.4+: с HG), старт с текущих значений модели
+const SIM_MAP = { "sim_m": "sim_m_o", "sim_c": "sim_c_o", "sim_z": "sim_z_o", "sim_w": "sim_w_o", "sim_p": "sim_p_o", "sim_b": "sim_b_o", "sim_bpr": "sim_bpr_o", "sim_wdr": "sim_wdr_o", "sim_hg": "sim_hg_o" };
 let simFw = null;
 function simRead() {
   const v = {};
@@ -924,20 +951,21 @@ function simCalc() {
   const mb = Math.round((0.85 + 0.30 * v.sim_b) * 1000) / 1000;
   const bp = Math.round((1 + 0.20 * (1 - Math.exp(-v.sim_bpr / 4))) * 1000) / 1000;
   const wd = Math.round((1 + 0.15 * (1 - Math.exp(-v.sim_wdr / 2))) * 1000) / 1000;
-  const raw = maxChan * mw * mb * bp * wd;
+  const hg = Math.round(v.sim_hg * 1000) / 1000; // П4 (QA): HG в симуляторе — та же формула, что в карточках (было 95 vs 97)
+  const raw = maxChan * mw * mb * bp * wd * hg;
   const r = Math.round(Math.min(100, Math.max(0, raw)));
   for (const [id, out] of Object.entries(SIM_MAP)) {
     const el = document.getElementById(out);
     el.textContent = (id === "sim_m" || id === "sim_c" || id === "sim_z") ? String(v[id])
       : id === "sim_w" ? v[id] + "%"
-      : (id === "sim_p" || id === "sim_b") ? (+v[id]).toFixed(2)
+      : (id === "sim_p" || id === "sim_b" || id === "sim_hg") ? (+v[id]).toFixed(2)
       : (+v[id]).toFixed(1);
   }
   const sat = raw > 100 ? ' · <span style="color:var(--orange)">⚠ сатурация: сырой ' + raw.toFixed(1) + ' клампится в 100</span>' : "";
   document.getElementById("sim-out").innerHTML =
     `<div class="big" style="color:${mColor(r)}">${r}</div>` +
     `<div class="decomp">R = max(${v.sim_m}, ${v.sim_c}, ${v.sim_z}) · канал: <b>${chan}</b><br>` +
-    `MW ${mw.toFixed(2)} × MB ${mb.toFixed(2)} × BP ${bp.toFixed(2)} × WD ${wd.toFixed(2)}${sat}</div>` +
+    `MW ${mw.toFixed(2)} × MB ${mb.toFixed(2)} × BP ${bp.toFixed(2)} × WD ${wd.toFixed(2)} × HG ${hg.toFixed(2)}${sat}</div>` +
     `<div class="decomp" style="margin-top:6px">пороги: ${r >= 75 ? "<b style='color:var(--red)'>≥75 — окно высокого риска</b>" : r >= 45 ? "45–74 — активный пролёт" : r >= 15 ? "15–44 — умеренное движение" : "<15 — фон"}</div>`;
 }
 function simInit(fwId) {
@@ -954,6 +982,7 @@ function simInit(fwId) {
   if (ob) { set("sim_b", ob.b ?? 0); set("sim_bpr", ob.bp && ob.bp > 1 ? Math.min(8, -4 * Math.log(1 - (ob.bp - 1) / 0.20)) : 0); }
   else { set("sim_b", 0); set("sim_bpr", 0); }
   if (wf && wf.wd > 1) set("sim_wdr", Math.min(6, -2 * Math.log(1 - (wf.wd - 1) / 0.15))); else set("sim_wdr", 0);
+  set("sim_hg", s.hg != null ? Math.round(s.hg * 1000) / 1000 : 1); // нет habitat.json — HG нейтрален (1.00)
   document.querySelectorAll("#sim-chips .chip-btn").forEach(b => b.classList.toggle("active", b.dataset.v === fwId));
   simCalc();
 }
@@ -971,9 +1000,20 @@ async function boot() {
   try {
     M = await (await fetch("./data/model.json", { cache: "no-store" })).json();
     CURW = isoWeek(new Date());
-    renderMeta(); drawSpecTable(); drawOutbreaks(); drawBacktest(); drawNodes(); drawForecast(); drawHistory(); simBoot(); setWeek(CURW);
+    renderMeta(); drawSpecTable(); drawOutbreaks(); drawBacktest(); drawNodes(); drawForecast(); drawHistory(); simBoot();
+    // П5: deep-link недели (#w27); мусорный/посторонний hash игнорируется
+    const hw = parseInt((location.hash.match(/^#w(\d{1,2})$/) || [])[1], 10);
+    setWeek(hw >= 1 && hw <= 52 ? hw : CURW);
   } catch (e) {
+    // Ш1 (QA): честное состояние отказа вместо шести молчаливо пустых секций —
+    // по образцу риск-страницы (там сообщение есть, здесь секции просто пустовали)
+    const why = e && e.message ? e.message : "сеть/файл";
     document.getElementById("meta").innerHTML = `<span class="dot"></span><span>model.json недоступен</span>`;
+    document.getElementById("stats").innerHTML =
+      `<div class="stat"><b style="color:var(--amber)">нет данных</b><span>данные модели (model.json) недоступны — ${esc(why)}. Проверьте сеть и обновите страницу: карточки флайвеев, узлы, прогноз, история и симулятор заполнятся после восстановления; методология и changelog ниже доступны всегда.</span></div>`;
+    document.getElementById("flyways").innerHTML =
+      `<div class="fw" style="border-top-color:var(--amber)"><h3>Данные модели не загрузились</h3><div class="reg">model.json недоступен (${esc(why)})</div><div class="win">Проверьте соединение и обновите страницу — витрина вернётся к живым значениям после восстановления файла. Причина: обрыв сети либо битый/недоступный data/model.json.</div></div>`;
+    document.getElementById("wk-label").textContent = "model.json недоступен"; // слайдер остаётся disabled (Ш2)
   }
 }
 document.getElementById("week").oninput = (e) => setWeek(+e.target.value);
