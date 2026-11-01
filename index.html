@@ -650,7 +650,7 @@ function drawMap() {
       const flag = (t, c) => ` <span style="font:700 10px var(--mono);border:1px solid ${c};color:${c};border-radius:4px;padding:0 3px;vertical-align:1px">${t}</span>`;
       const badge = (n.colony ? flag("кол", "#34d399") : "") + (n.wintering ? flag("зим", "#a78bfa") : "");
       const body = live
-        ? `R узла = <b style="color:${mColor(n.r)}">${n.r}</b><br><span style="color:var(--ds-muted)">${esc(chanName(n.chan))} ${n.chan_value} × MW<sub>узла</sub> ${n.mw} × MB ${n.mb} × BP ${n.bp ?? 1} × WD ${n.wd ?? 1} × HG ${n.hg ?? 1}${n.anomaly_c != null ? ` · аномалия ${n.anomaly_c > 0 ? "+" : ""}${n.anomaly_c}°C` : ""}</span>`
+        ? `R узла = <b style="color:${mColor(n.r)}">${n.r}</b><br><span style="color:var(--ds-muted)">${esc(chanName(n.chan))} ${n.chan_value} × MW<sub>узла</sub> ${n.mw} × MB<sub>узла</sub> ${n.mb_geo ?? n.mb} × BP ${n.bp ?? 1} × WD ${n.wd ?? 1} × HG ${n.hg ?? 1}${n.anomaly_c != null ? ` · аномалия ${n.anomaly_c > 0 ? "+" : ""}${n.anomaly_c}°C` : ""}</span>`
         : `<span style="color:var(--ds-muted)">${esc(chanName(wkRow.chan))} ${chanMax(wkRow)} — статика канала (R узла — только на «сегодня»)</span>`;
       L.circleMarker([n.lat, n.lon], { radius: 4 + 7 * (val / 100), color: vizVar("--ds-text"), weight: 1.2, fillColor: mColorHex(val), fillOpacity: .85 })
         .bindPopup(`<b>${esc(n.name)}${badge}</b><br><span style="color:var(--ds-muted)">${esc(fw ? fw.label : fwid)} · узел · share ${Math.round(n.share * 100)}%</span><br>${body}`)
