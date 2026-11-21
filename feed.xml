@@ -5,15 +5,8 @@
 <link>https://shray77.github.io/vetflu-site/</link>
 <description>Ежедневный индекс риска заноса высокопатогенного гриппа птиц по 4 флайвеям России: R = max(M, C, Z) × MW × MB × BP × WD × HG. События — смены фазы риска.</description>
 <language>ru</language>
-<lastBuildDate>Fri, 20 Nov 2026 10:52:05 GMT</lastBuildDate>
+<lastBuildDate>Sat, 21 Nov 2026 10:38:46 GMT</lastBuildDate>
 <atom:link href="https://shray77.github.io/vetflu-site/feed.xml" rel="self" type="application/rss+xml" />
-<item>
-<title>Старт наблюдения: В-Атл R100 транзит (окно высокого риска) · Черном. R43 транзит (умеренное движение) · Центр-Аз R61 транзит (активный пролёт) · В-Азия R54 транзит (активный пролёт)</title>
-<link>https://shray77.github.io/vetflu-site/</link>
-<guid isPermaLink="false">vetflu-2026-10-10-1m2s8z5</guid>
-<pubDate>Sat, 10 Oct 2026 12:00:00 GMT</pubDate>
-<description>Начало ежедневной истории индекса R = max(M, C, Z) × MW × MB. В-Атл R100 транзит (окно высокого риска); Черном. R43 транзит (умеренное движение); Центр-Аз R61 транзит (активный пролёт); В-Азия R54 транзит (активный пролёт).</description>
-</item>
 <item>
 <title>Черном.: умеренное движение → активный пролёт · R 55 (транзит)</title>
 <link>https://shray77.github.io/vetflu-site/</link>
@@ -146,6 +139,13 @@
 <guid isPermaLink="false">vetflu-2026-11-19-3qymm6</guid>
 <pubDate>Thu, 19 Nov 2026 12:00:00 GMT</pubDate>
 <description>Черноморско-Средиземноморский: фаза риска сменилась с «активный пролёт» на «умеренное движение». Разложение на 2026-11-19: M 54 · C 0 · Z 44 → канал «Транзит», MW 0.88 × MB 0.865 = R 43.</description>
+</item>
+<item>
+<title>Черном.: умеренное движение → активный пролёт · R 49 (транзит)</title>
+<link>https://shray77.github.io/vetflu-site/</link>
+<guid isPermaLink="false">vetflu-2026-11-21-a3ld50</guid>
+<pubDate>Sat, 21 Nov 2026 12:00:00 GMT</pubDate>
+<description>Черноморско-Средиземноморский: фаза риска сменилась с «умеренное движение» на «активный пролёт». Разложение на 2026-11-21: M 54 · C 0 · Z 44 → канал «Транзит», MW 1 × MB 0.868 = R 49.</description>
 </item>
 </channel>
 </rss>
