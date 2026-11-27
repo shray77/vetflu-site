@@ -5,15 +5,8 @@
 <link>https://shray77.github.io/vetflu-site/</link>
 <description>Ежедневный индекс риска заноса высокопатогенного гриппа птиц по 4 флайвеям России: R = max(M, C, Z) × MW × MB × BP × WD × HG. События — смены фазы риска.</description>
 <language>ru</language>
-<lastBuildDate>Thu, 26 Nov 2026 11:50:17 GMT</lastBuildDate>
+<lastBuildDate>Fri, 27 Nov 2026 11:41:49 GMT</lastBuildDate>
 <atom:link href="https://shray77.github.io/vetflu-site/feed.xml" rel="self" type="application/rss+xml" />
-<item>
-<title>В-Атл: окно высокого риска → активный пролёт · R 73 (транзит)</title>
-<link>https://shray77.github.io/vetflu-site/</link>
-<guid isPermaLink="false">vetflu-2026-11-02-fbcuvy</guid>
-<pubDate>Mon, 02 Nov 2026 12:00:00 GMT</pubDate>
-<description>Восточно-Атлантический: фаза риска сменилась с «окно высокого риска» на «активный пролёт». Разложение на 2026-11-02: M 56 · C 0 · Z 0 → канал «Транзит», MW 0.9 × MB 1.148 = R 73.</description>
-</item>
 <item>
 <title>Черном.: окно высокого риска → активный пролёт · R 71 (транзит)</title>
 <link>https://shray77.github.io/vetflu-site/</link>
@@ -146,6 +139,13 @@
 <guid isPermaLink="false">vetflu-2026-11-26-1qfrpm4</guid>
 <pubDate>Thu, 26 Nov 2026 12:00:00 GMT</pubDate>
 <description>Восточноазиатско-Австралазийский: фаза риска сменилась с «умеренное движение» на «активный пролёт». Разложение на 2026-11-26: M 38 · C 0 · Z 15 → канал «Транзит», MW 1.2 × MB 1 = R 45.</description>
+</item>
+<item>
+<title>В-Азия: активный пролёт → умеренное движение · R 44 (транзит)</title>
+<link>https://shray77.github.io/vetflu-site/</link>
+<guid isPermaLink="false">vetflu-2026-11-27-s0dwx7</guid>
+<pubDate>Fri, 27 Nov 2026 12:00:00 GMT</pubDate>
+<description>Восточноазиатско-Австралазийский: фаза риска сменилась с «активный пролёт» на «умеренное движение». Разложение на 2026-11-27: M 38 · C 0 · Z 15 → канал «Транзит», MW 1.18 × MB 1 = R 44.</description>
 </item>
 </channel>
 </rss>
